@@ -1,561 +1,285 @@
 <template>
-    <header class="header">
-        <div class="header-inner">
-            <!-- Logo -->
-            <RouterLink :to="isAdmin ? '/admin/dashboard' : '/'" class="logo">
-                <span class="logo-icon">🧁</span>
-                <span class="logo-text">{{ isAdmin ? 'Douceur Admin' : 'Douceur' }}</span>
+  <header
+    class="sticky top-0 z-50 transition-all duration-300"
+    :class="scrolled
+      ? 'bg-cream/90 backdrop-blur-xl shadow-soft border-b border-gold/20'
+      : 'bg-cream border-b border-transparent'"
+  >
+    <div class="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex items-center justify-between gap-3 md:gap-4 h-16 md:h-20">
+
+        <!-- Logo -->
+        <RouterLink :to="isAdmin ? '/admin/dashboard' : '/'" class="group flex items-center gap-2 md:gap-2.5 shrink-0">
+          <span class="grid place-items-center w-9 h-9 md:w-10 md:h-10 rounded-2xl bg-gradient-to-br from-caramel to-caramel-dark shadow-soft group-hover:shadow-card transition-all duration-300 group-hover:-rotate-6">
+            <span class="text-lg md:text-xl">🧁</span>
+          </span>
+          <span class="font-display text-lg md:text-2xl font-extrabold text-chocolate tracking-tight whitespace-nowrap">
+            {{ isAdmin ? 'Douceur Admin' : 'Douceur' }}<span class="text-caramel">.</span>
+          </span>
+        </RouterLink>
+
+        <!-- ═══ NAV DESKTOP ═══ -->
+        <nav class="hidden lg:flex items-center gap-1 flex-1 justify-center">
+
+          <!-- ADMIN : 3 groupes -->
+          <template v-if="isAdmin">
+            <div
+              v-for="group in adminGroups"
+              :key="group.key"
+              class="relative"
+              @mouseenter="openMenu(group.key)"
+              @mouseleave="scheduleClose(group.key)"
+            >
+              <button
+                class="flex items-center gap-1.5 px-3 xl:px-4 py-2 rounded-full text-sm font-medium transition-all whitespace-nowrap"
+                :class="activeMenu === group.key
+                  ? 'bg-caramel text-white shadow-soft'
+                  : 'text-chocolate-soft hover:text-caramel-dark hover:bg-cream-dark/60'"
+              >
+                {{ group.label }}
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"
+                     class="w-3 h-3 transition-transform duration-200"
+                     :class="{ 'rotate-180': activeMenu === group.key }">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+                </svg>
+              </button>
+
+              <Transition name="dropdown">
+                <div
+                  v-if="activeMenu === group.key"
+                  class="absolute top-full left-1/2 -translate-x-1/2 mt-3 w-72 bg-white rounded-2xl shadow-float border border-cream-dark p-2 z-[100]"
+                >
+                  <RouterLink
+                    v-for="link in group.links"
+                    :key="link.to"
+                    :to="link.to"
+                    @click="closeAllMenus"
+                    class="flex items-start gap-3 px-3 py-2.5 rounded-xl text-chocolate-soft hover:bg-cream hover:text-caramel-dark transition-colors"
+                  >
+                    <span class="text-lg w-6 text-center shrink-0 mt-0.5">{{ link.icon }}</span>
+                    <div class="flex flex-col">
+                      <span class="text-sm font-medium">{{ link.label }}</span>
+                      <span v-if="link.description" class="text-[11px] text-muted leading-tight mt-0.5">
+                        {{ link.description }}
+                      </span>
+                    </div>
+                  </RouterLink>
+                </div>
+              </Transition>
+            </div>
+          </template>
+
+          <!-- ═══ CLIENT : liens conditionnels ═══ -->
+          <template v-else>
+            <RouterLink to="/catalogue"
+              class="px-4 py-2 rounded-full text-sm font-medium text-chocolate-soft hover:text-caramel-dark hover:bg-cream-dark/60 transition-all"
+              active-class="bg-caramel text-white hover:bg-caramel-dark hover:text-white">
+              Catalogue
+            </RouterLink>
+            <RouterLink to="/evenements"
+              class="px-4 py-2 rounded-full text-sm font-medium text-chocolate-soft hover:text-caramel-dark hover:bg-cream-dark/60 transition-all"
+              active-class="bg-caramel text-white hover:bg-caramel-dark hover:text-white">
+              Événements
             </RouterLink>
 
-            <!-- Navigation ADMIN (visible) -->
-            <nav v-if="isAdmin" class="nav-admin">
-                <RouterLink to="/admin/dashboard" class="admin-nav-link">Tableau de bord</RouterLink>
-                <RouterLink to="/admin/commandes" class="admin-nav-link">Commandes</RouterLink>
-                <RouterLink to="/admin/produits" class="admin-nav-link">Produits</RouterLink>
-                <RouterLink to="/admin/sur-mesure" class="admin-nav-link">Sur mesure</RouterLink>
-                <template v-if="auth.user?.role === 'admin'">
-                    <RouterLink to="/admin/parametres" class="admin-nav-link">Paramètres</RouterLink>
-                    <RouterLink to="/admin/utilisateurs" class="admin-nav-link">Utilisateurs</RouterLink>
-                </template>
-            </nav>
+            <!-- ✅ Suivi COMMANDE : uniquement invités -->
+            <RouterLink
+              v-if="!auth.isAuthenticated"
+              to="/suivi-commande"
+              class="px-4 py-2 rounded-full text-sm font-medium text-chocolate-soft hover:text-caramel-dark hover:bg-cream-dark/60 transition-all"
+              active-class="bg-caramel text-white hover:bg-caramel-dark hover:text-white"
+            >
+              Suivi commande
+            </RouterLink>
 
-            <!-- Navigation CLIENT (visible) -->
-            <nav v-else class="nav-main">
-                <RouterLink to="/catalogue" class="nav-link">Catalogue</RouterLink>
-                <RouterLink to="/evenements" class="nav-link">Événements</RouterLink>
-            </nav>
+            <!-- ✅ Suivi DEMANDE : uniquement invités -->
+            <RouterLink
+              v-if="!auth.isAuthenticated"
+              to="/suivi-demande"
+              class="px-4 py-2 rounded-full text-sm font-medium text-chocolate-soft hover:text-caramel-dark hover:bg-cream-dark/60 transition-all"
+              active-class="bg-caramel text-white hover:bg-caramel-dark hover:text-white"
+            >
+              Suivi demande
+            </RouterLink>
+          </template>
+        </nav>
 
-            <!-- Actions à droite -->
-            <div class="header-actions">
-                <!-- Panier (client uniquement) -->
-                <NotificationBell v-if="isAdmin" />
-                <RouterLink v-if="!isAdmin" to="/panier" class="cart-btn" aria-label="Panier">
-                    <span class="cart-icon">🛒</span>
-                    <span v-if="cartCount > 0" class="cart-badge">{{ cartCount }}</span>
-                </RouterLink>
+        <!-- ═══ ACTIONS ═══ -->
+        <div class="flex items-center gap-1.5 md:gap-3 shrink-0">
 
-                <!-- Bouton boutique (admin) -->
-                <RouterLink v-if="isAdmin" to="/" class="shop-btn" title="Voir la boutique">
-                    🏪 Boutique
-                </RouterLink>
+          <NotificationBell v-if="isAdmin" />
 
-                <!-- Non connecté -->
-                <template v-if="!auth.isAuthenticated">
-                    <RouterLink to="/connexion" class="btn-login">Connexion</RouterLink>
-                    <RouterLink to="/inscription" class="btn-signup">S'inscrire</RouterLink>
-                </template>
+          <RouterLink
+            v-if="!isAdmin"
+            to="/panier"
+            aria-label="Voir le panier"
+            class="relative grid place-items-center w-10 h-10 md:w-11 md:h-11 rounded-full bg-white shadow-soft hover:shadow-card hover:bg-cream transition-all group"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"
+                 class="w-5 h-5 text-chocolate group-hover:text-caramel-dark transition-colors">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 00-3 3h15.75m-12.75-3h11.218c1.121-2.3 2.1-4.684 2.924-7.138a60.114 60.114 0 00-16.536-1.84M7.5 14.25L5.106 5.272M6 20.25a.75.75 0 11-1.5 0 .75.75 0 011.5 0zm12.75 0a.75.75 0 11-1.5 0 .75.75 0 011.5 0z" />
+            </svg>
+            <span
+              v-if="cartCount > 0"
+              class="absolute -top-0.5 -right-0.5 min-w-[20px] h-5 px-1 grid place-items-center bg-raspberry text-white text-[10px] md:text-xs font-bold rounded-full ring-2 ring-cream animate-fade-up"
+            >
+              {{ cartCount > 99 ? '99+' : cartCount }}
+            </span>
+          </RouterLink>
 
-                <!-- Connecté : menu utilisateur -->
-                <div v-else class="user-menu-wrapper" ref="userMenuRef">
-                    <button class="user-menu-btn" @click="toggleUserMenu">
-                        <div class="user-avatar">{{ initials }}</div>
-                        <div class="user-info">
-                            <span class="user-name">{{ auth.user.name }}</span>
-                            <span class="user-role">{{ roleLabel }}</span>
-                        </div>
-                        <span class="chevron" :class="{ open: userMenuOpen }">▾</span>
-                    </button>
+          <RouterLink
+            v-if="isAdmin"
+            to="/"
+            title="Voir la boutique"
+            class="hidden sm:inline-flex items-center gap-2 px-3 md:px-4 py-2 rounded-full bg-white shadow-soft hover:shadow-card hover:bg-cream text-chocolate-soft hover:text-caramel-dark font-semibold text-xs md:text-sm transition-all"
+          >
+            🏪 <span class="hidden md:inline">Boutique</span>
+          </RouterLink>
 
-                    <Transition name="dropdown">
-                        <div v-if="userMenuOpen" class="user-dropdown">
-                            <!-- Client -->
-                            <template v-if="auth.user.role === 'customer'">
-                                <RouterLink to="/mon-compte" class="dropdown-item" @click="closeUserMenu">
-                                    <span class="item-icon">👤</span> Mon compte
-                                </RouterLink>
-                                <RouterLink to="/mes-commandes" class="dropdown-item" @click="closeUserMenu">
-                                    <span class="item-icon">📦</span> Mes commandes
-                                </RouterLink>
-                                <RouterLink to="/mes-demandes" class="dropdown-item" @click="closeUserMenu">
-                                    <span class="item-icon">🎂</span> Mes demandes
-                                </RouterLink>
-                                <div class="dropdown-divider"></div>
-                                <button class="dropdown-item logout" @click="handleLogout">
-                                    <span class="item-icon">🚪</span> Déconnexion
-                                </button>
-                            </template>
+          <template v-if="!auth.isAuthenticated">
+            <RouterLink to="/connexion"
+              class="hidden md:inline-block px-4 py-2 text-chocolate-soft hover:text-caramel font-semibold text-sm transition-colors">
+              Connexion
+            </RouterLink>
+            <RouterLink to="/inscription"
+              class="hidden md:inline-block px-4 md:px-5 py-2 rounded-full bg-caramel hover:bg-caramel-dark text-white font-semibold text-sm shadow-soft hover:shadow-card transition-all hover:-translate-y-0.5">
+              S'inscrire
+            </RouterLink>
+          </template>
 
-                            <!-- Admin/Merchant : menu minimal -->
-                            <template v-else>
-                                <RouterLink to="/mon-compte" class="dropdown-item" @click="closeUserMenu">
-                                    <span class="item-icon">👤</span> Mon compte
-                                </RouterLink>
-                                <RouterLink to="/" class="dropdown-item" @click="closeUserMenu">
-                                    <span class="item-icon">🏪</span> Voir la boutique
-                                </RouterLink>
-                                <div class="dropdown-divider"></div>
-                                <button class="dropdown-item logout" @click="handleLogout">
-                                    <span class="item-icon">🚪</span> Déconnexion
-                                </button>
-                            </template>
-                        </div>
-                    </Transition>
-                </div>
-            </div>
+          <UserMenu
+            v-else
+            :user="auth.user"
+            :initials="initials"
+            :role-label="roleLabel"
+            @logout="handleLogout"
+          />
+
+          <button
+            @click="mobileMenuOpen = true"
+            aria-label="Ouvrir le menu"
+            class="lg:hidden grid place-items-center w-10 h-10 md:w-11 md:h-11 rounded-full bg-white shadow-soft hover:shadow-card transition-all"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5 text-chocolate">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+            </svg>
+          </button>
         </div>
-    </header>
+      </div>
+    </div>
+
+    <MobileDrawer
+      :open="mobileMenuOpen"
+      :is-admin="isAdmin"
+      :is-authenticated="auth.isAuthenticated"
+      :user="auth.user"
+      :initials="initials"
+      :role-label="roleLabel"
+      @close="mobileMenuOpen = false"
+      @logout="handleLogout"
+    />
+  </header>
 </template>
 
 <script setup>
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
-import { useRouter } from 'vue-router';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 import { useCartStore } from '../../stores/cart';
 import { useAuthStore } from '../../stores/auth';
 import NotificationBell from './NotificationBell.vue';
+import UserMenu from './UserMenu.vue';
+import MobileDrawer from './MobileDrawer.vue';
 
 const cartStore = useCartStore();
 const auth = useAuthStore();
 const router = useRouter();
+const route = useRoute();
 
 const cartCount = computed(() => cartStore.itemCount);
 const isAdmin = computed(() => ['admin', 'merchant'].includes(auth.user?.role));
 
-const userMenuOpen = ref(false);
-const userMenuRef = ref(null);
+const mobileMenuOpen = ref(false);
+const scrolled = ref(false);
+const activeMenu = ref(null);
+let closeTimer = null;
+
+const adminGroups = computed(() => {
+  const groups = [
+    {
+      key: 'pilotage',
+      label: 'Pilotage',
+      links: [
+        { to: '/admin/dashboard', icon: '📊', label: 'Tableau de bord', description: "Vue d'ensemble du jour" },
+        { to: '/admin/commandes', icon: '📦', label: 'Commandes', description: 'À préparer / en cours' },
+      ],
+    },
+    {
+      key: 'catalogue',
+      label: 'Catalogue',
+      links: [
+        { to: '/admin/produits', icon: '🍰', label: 'Produits', description: 'Gérer la boutique' },
+        { to: '/admin/sur-mesure', icon: '🎂', label: 'Sur mesure', description: 'Demandes clients' },
+      ],
+    },
+  ];
+  if (auth.user?.role === 'admin') {
+    groups.push({
+      key: 'administration',
+      label: 'Administration',
+      links: [
+        { to: '/admin/utilisateurs', icon: '👥', label: 'Utilisateurs', description: 'Rôles & accès' },
+        { to: '/admin/parametres', icon: '⚙️', label: 'Paramètres', description: 'Configuration' },
+      ],
+    });
+  }
+  return groups;
+});
 
 const initials = computed(() => {
-    if (!auth.user?.name) return '?';
-    return auth.user.name
-        .split(' ')
-        .map((n) => n[0])
-        .slice(0, 2)
-        .join('')
-        .toUpperCase();
+  if (!auth.user?.name) return '?';
+  return auth.user.name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase();
 });
 
 const roleLabel = computed(() => {
-    if (auth.user?.role === 'admin') return 'Administrateur';
-    if (auth.user?.role === 'merchant') return 'Commerçant';
-    return 'Client';
+  if (auth.user?.role === 'admin') return 'Administrateur';
+  if (auth.user?.role === 'merchant') return 'Commerçant';
+  return 'Client';
 });
 
-function toggleUserMenu() {
-    userMenuOpen.value = !userMenuOpen.value;
+function openMenu(key) { clearTimeout(closeTimer); activeMenu.value = key; }
+function scheduleClose(key) {
+  closeTimer = setTimeout(() => { if (activeMenu.value === key) activeMenu.value = null; }, 150);
 }
-
-function closeUserMenu() {
-    userMenuOpen.value = false;
-}
-
-function handleClickOutside(event) {
-    if (userMenuRef.value && !userMenuRef.value.contains(event.target)) {
-        closeUserMenu();
-    }
-}
+function closeAllMenus() { activeMenu.value = null; mobileMenuOpen.value = false; }
 
 async function handleLogout() {
-    closeUserMenu();
-    await auth.logout();
-    router.push('/');
+  closeAllMenus();
+  await auth.logout();
+  router.push('/');
 }
 
-onMounted(() => {
-    document.addEventListener('click', handleClickOutside);
-});
+function onScroll() { scrolled.value = window.scrollY > 8; }
 
+watch(() => route.fullPath, () => closeAllMenus());
+
+onMounted(() => {
+  window.addEventListener('scroll', onScroll, { passive: true });
+  onScroll();
+});
 onBeforeUnmount(() => {
-    document.removeEventListener('click', handleClickOutside);
+  window.removeEventListener('scroll', onScroll);
+  clearTimeout(closeTimer);
 });
 </script>
 
 <style scoped>
-.header {
-    position: sticky;
-    top: 0;
-    z-index: 50;
-    background: rgba(253, 248, 240, 0.95);
-    backdrop-filter: blur(12px);
-    border-bottom: 1px solid rgba(212, 165, 116, 0.2);
-}
-
-.header-inner {
-    max-width: 1400px;
-    margin: 0 auto;
-    padding: 0.85rem 1.5rem;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 1.5rem;
-}
-
-.logo {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    font-family: 'Playfair Display', serif;
-    font-size: 1.5rem;
-    font-weight: 800;
-    color: var(--chocolate);
-    letter-spacing: -0.02em;
-    flex-shrink: 0;
-}
-
-.logo:hover {
-    color: var(--chocolate);
-}
-
-.logo-icon {
-    font-size: 1.4rem;
-}
-
-/* Navigation client */
-.nav-main {
-    display: flex;
-    gap: 1.75rem;
-    align-items: center;
-    flex: 1;
-}
-
-.nav-link {
-    color: var(--chocolate-soft);
-    font-weight: 500;
-    font-size: 0.95rem;
-    position: relative;
-    padding: 0.25rem 0;
-}
-
-.nav-link::after {
-    content: '';
-    position: absolute;
-    bottom: -2px;
-    left: 0;
-    width: 0;
-    height: 2px;
-    background: var(--caramel);
-    transition: width 0.3s ease;
-    border-radius: 2px;
-}
-
-.nav-link:hover::after,
-.nav-link.router-link-active::after {
-    width: 100%;
-}
-
-.nav-link.router-link-active {
-    color: var(--caramel-dark);
-}
-
-/* Navigation admin */
-.nav-admin {
-    display: flex;
-    gap: 0.35rem;
-    align-items: center;
-    flex: 1;
-    justify-content: center;
-    flex-wrap: wrap;
-}
-
-.admin-nav-link {
-    padding: 0.55rem 1rem;
-    border-radius: 999px;
-    color: var(--chocolate-soft);
-    font-weight: 500;
-    font-size: 0.9rem;
-    transition: all 0.2s;
-    white-space: nowrap;
-}
-
-.admin-nav-link:hover {
-    background: var(--cream);
-    color: var(--caramel-dark);
-    text-decoration: none;
-}
-
-.admin-nav-link.router-link-active {
-    background: var(--caramel);
-    color: white;
-}
-
-/* Actions */
-.header-actions {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    flex-shrink: 0;
-}
-
-/* Panier */
-.cart-btn {
-    position: relative;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 44px;
-    height: 44px;
-    border-radius: 50%;
-    background: white;
-    box-shadow: var(--shadow-sm);
-    transition: all 0.2s;
-    color: var(--chocolate);
-}
-
-.cart-btn:hover {
-    background: var(--cream);
-    transform: translateY(-1px);
-    box-shadow: var(--shadow-md);
-    text-decoration: none;
-}
-
-.cart-icon {
-    font-size: 1.3rem;
-}
-
-.cart-badge {
-    position: absolute;
-    top: -2px;
-    right: -2px;
-    background: var(--raspberry);
-    color: white;
-    border-radius: 999px;
-    padding: 0.1rem 0.4rem;
-    font-size: 0.7rem;
-    font-weight: 700;
-    min-width: 18px;
-    text-align: center;
-    border: 2px solid var(--cream);
-}
-
-/* Bouton boutique (admin) */
-.shop-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.4rem;
-    padding: 0.5rem 1rem;
-    border-radius: 999px;
-    background: white;
-    color: var(--chocolate-soft);
-    font-weight: 600;
-    font-size: 0.85rem;
-    box-shadow: var(--shadow-sm);
-    transition: all 0.2s;
-}
-
-.shop-btn:hover {
-    background: var(--cream);
-    color: var(--caramel-dark);
-    text-decoration: none;
-}
-
-/* Boutons non connecté */
-.btn-login,
-.btn-signup {
-    padding: 0.5rem 1.1rem;
-    border-radius: 999px;
-    font-weight: 600;
-    font-size: 0.9rem;
-    transition: all 0.2s;
-}
-
-.btn-login {
-    color: var(--chocolate-soft);
-}
-
-.btn-login:hover {
-    color: var(--caramel);
-}
-
-.btn-signup {
-    background: var(--caramel);
-    color: white;
-}
-
-.btn-signup:hover {
-    background: var(--caramel-dark);
-    text-decoration: none;
-}
-
-/* Menu utilisateur */
-.user-menu-wrapper {
-    position: relative;
-}
-
-.user-menu-btn {
-    display: flex;
-    align-items: center;
-    gap: 0.6rem;
-    padding: 0.35rem 0.75rem 0.35rem 0.35rem;
-    border-radius: 999px;
-    background: white;
-    box-shadow: var(--shadow-sm);
-    transition: all 0.2s;
-    color: var(--chocolate);
-}
-
-.user-menu-btn:hover {
-    box-shadow: var(--shadow-md);
-    background: var(--cream);
-}
-
-.user-avatar {
-    width: 36px;
-    height: 36px;
-    border-radius: 50%;
-    background: linear-gradient(135deg, var(--caramel), var(--caramel-dark));
-    color: white;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: 700;
-    font-size: 0.85rem;
-    flex-shrink: 0;
-}
-
-.user-info {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    line-height: 1.2;
-}
-
-.user-name {
-    font-size: 0.85rem;
-    font-weight: 600;
-    color: var(--chocolate);
-    max-width: 140px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
-.user-role {
-    font-size: 0.7rem;
-    color: var(--text-muted);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    font-weight: 500;
-}
-
-.chevron {
-    font-size: 0.8rem;
-    color: var(--text-muted);
-    transition: transform 0.2s;
-}
-
-.chevron.open {
-    transform: rotate(180deg);
-}
-
-/* Dropdown */
-.user-dropdown {
-    position: absolute;
-    top: calc(100% + 8px);
-    right: 0;
-    min-width: 220px;
-    background: white;
-    border-radius: var(--radius);
-    box-shadow: var(--shadow-lg);
-    padding: 0.5rem;
-    z-index: 100;
-    border: 1px solid var(--cream-dark);
-}
-
-.dropdown-item {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    padding: 0.65rem 0.9rem;
-    border-radius: var(--radius-sm);
-    color: var(--chocolate-soft);
-    font-size: 0.9rem;
-    font-weight: 500;
-    transition: all 0.15s;
-    width: 100%;
-    text-align: left;
-}
-
-.dropdown-item:hover {
-    background: var(--cream);
-    color: var(--caramel-dark);
-    text-decoration: none;
-}
-
-.item-icon {
-    font-size: 1rem;
-    width: 20px;
-    text-align: center;
-}
-
-.dropdown-divider {
-    height: 1px;
-    background: var(--cream-dark);
-    margin: 0.4rem 0;
-}
-
-.dropdown-item.logout {
-    color: var(--raspberry);
-}
-
-.dropdown-item.logout:hover {
-    background: rgba(201, 79, 109, 0.08);
-    color: var(--raspberry);
-}
-
-/* Transition dropdown */
 .dropdown-enter-active,
 .dropdown-leave-active {
-    transition: opacity 0.15s ease, transform 0.15s ease;
+  transition: opacity 0.18s ease, transform 0.18s ease;
 }
-
 .dropdown-enter-from,
 .dropdown-leave-to {
-    opacity: 0;
-    transform: translateY(-6px);
-}
-
-/* Responsive */
-@media (max-width: 1100px) {
-    .admin-nav-link {
-        font-size: 0.85rem;
-        padding: 0.45rem 0.75rem;
-    }
-}
-
-@media (max-width: 900px) {
-    .header-inner {
-        padding: 0.75rem 1rem;
-        gap: 0.75rem;
-    }
-    .logo {
-        font-size: 1.3rem;
-    }
-    .nav-main {
-        gap: 1rem;
-    }
-    .nav-link {
-        font-size: 0.85rem;
-    }
-    .user-info {
-        display: none;
-    }
-    .user-menu-btn {
-        padding: 0.25rem;
-    }
-    .chevron {
-        display: none;
-    }
-    .nav-admin {
-        display: none;
-    }
-    .shop-btn span {
-        display: none;
-    }
-}
-
-@media (max-width: 600px) {
-    .nav-main {
-        display: none;
-    }
-    .header-actions {
-        gap: 0.5rem;
-    }
-    .cart-btn {
-        width: 40px;
-        height: 40px;
-    }
-    .btn-login,
-    .btn-signup {
-        padding: 0.45rem 0.9rem;
-        font-size: 0.85rem;
-    }
+  opacity: 0;
+  transform: translate(-50%, -6px);
 }
 </style>

@@ -1,123 +1,316 @@
+
+<!-- Page mon compte client -->
 <template>
-    <div class="account-page">
-        <h1>Mon compte</h1>
+  <div class="max-w-6xl mx-auto">
 
-        <div v-if="!auth.isAuthenticated" class="state">
-            <p>Vous devez être connecté pour accéder à cette page.</p>
-            <RouterLink to="/connexion" class="btn-primary">Se connecter</RouterLink>
-        </div>
+    <!-- En-tête -->
+    <header class="mb-8 sm:mb-10">
+      <p class="text-xs font-semibold uppercase tracking-[0.2em] text-caramel-dark">
+        Espace personnel
+      </p>
 
-        <div v-else class="account-layout">
-            <!-- Informations personnelles -->
-            <section class="card">
-                <h2>Informations personnelles</h2>
-                <form @submit.prevent="saveProfile">
-                    <label>Nom<input v-model="profile.name" required /></label>
-                    <label>Email<input v-model="profile.email" type="email" required /></label>
-                    <label>Téléphone<input v-model="profile.phone" type="tel" /></label>
-                    <p v-if="profileError" class="error">{{ profileError }}</p>
-                    <p v-if="profileSuccess" class="success">✓ Profil mis à jour.</p>
-                    <button type="submit" class="btn-primary" :disabled="savingProfile">
-                        {{ savingProfile ? 'Enregistrement…' : 'Enregistrer' }}
-                    </button>
-                </form>
-            </section>
+      <h1 class="mt-2 font-display text-3xl font-bold text-chocolate sm:text-4xl">
+        Mon compte<span class="text-caramel">.</span>
+      </h1>
 
-            <!-- Adresses -->
-            <section class="card">
-                <div class="card-head">
-                    <h2>Mes adresses</h2>
-                    <button class="btn-secondary small" @click="showAddressForm = !showAddressForm">
-                        {{ showAddressForm ? 'Annuler' : '+ Ajouter' }}
-                    </button>
-                </div>
+      <p class="mt-3 max-w-2xl text-sm leading-6 text-chocolate-soft/70 sm:text-base">
+        Gérez vos informations personnelles et vos adresses de livraison.
+      </p>
+    </header>
 
-                <form v-if="showAddressForm" class="address-form" @submit.prevent="saveAddress">
-                    <label>Libellé (optionnel)<input v-model="addressForm.label" placeholder="Domicile, Bureau…" /></label>
-                    <label>Destinataire<input v-model="addressForm.recipient_name" required /></label>
-                    <label>Téléphone<input v-model="addressForm.phone" type="tel" /></label>
 
-                    <label class="address-label">
-                        Adresse
-                        <div class="autocomplete">
-                            <input
-                                v-model="addressForm.street"
-                                required
-                                autocomplete="off"
-                                @input="onAddressInput"
-                                @focus="showSuggestions = suggestions.length > 0"
-                                @blur="hideSuggestions"
-                            />
-                            <ul v-if="showSuggestions && suggestions.length > 0" class="suggestions">
-                                <li
-                                    v-for="(s, i) in suggestions"
-                                    :key="i"
-                                    @mousedown.prevent="selectSuggestion(s)"
-                                >
-                                    {{ s.label }}
-                                </li>
-                            </ul>
-                        </div>
-                    </label>
 
-                    <label>Complément<input v-model="addressForm.street_2" /></label>
-                    <div class="grid-2">
-                        <label>Code postal<input v-model="addressForm.postal_code" required /></label>
-                        <label>Ville<input v-model="addressForm.city" required /></label>
-                    </div>
-                    <label class="checkbox">
-                        <input v-model="addressForm.is_default" type="checkbox" />
-                        Définir comme adresse de livraison par défaut
-                    </label>
-                    <p v-if="addressError" class="error">{{ addressError }}</p>
-                    <button type="submit" class="btn-primary" :disabled="savingAddress">
-                        {{ savingAddress ? 'Enregistrement…' : 'Ajouter l’adresse' }}
-                    </button>
-                </form>
-
-                <div v-if="addresses.length === 0" class="empty">
-                    <span class="empty-emoji">📍</span>
-                    <p>Aucune adresse enregistrée.</p>
-                    <p class="hint">Ajoutez une adresse pour vos livraisons.</p>
-                </div>
-
-                <ul v-else class="addresses">
-                    <li v-for="addr in addresses" :key="addr.id" class="address-card">
-                        <div class="address-header">
-                            <div class="address-title">
-                                <span class="address-icon">{{ addr.label ? '🏠' : '📍' }}</span>
-                                <strong>{{ addr.label || 'Adresse' }}</strong>
-                                <span v-if="addr.is_default" class="default-badge">Par défaut</span>
-                            </div>
-                            <button class="remove" @click="deleteAddress(addr)" title="Supprimer">✕</button>
-                        </div>
-                        <p class="address-recipient">{{ addr.recipient_name }}</p>
-                        <p class="address-line">{{ addr.street }}<span v-if="addr.street_2">, {{ addr.street_2 }}</span></p>
-                        <p class="address-line">{{ addr.postal_code }} {{ addr.city }}</p>
-                        <p v-if="addr.phone" class="address-phone">📞 {{ addr.phone }}</p>
-                        <button
-                            v-if="!addr.is_default"
-                            class="btn-default"
-                            @click="setDefault(addr)"
-                        >
-                            Définir par défaut
-                        </button>
-                        <button
-                            v-else
-                            class="btn-unset"
-                            @click="unsetDefault(addr)"
-                        >
-                            Retirer le défaut
-                        </button>
-                    </li>
-                </ul>
-
-                <div v-if="addresses.length > 0 && !hasDefault" class="info-fallback">
-                    ℹ️ Aucune adresse par défaut : la livraison utilisera les coordonnées de votre compte.
-                </div>
-            </section>
-        </div>
+    <!-- Non connecté -->
+    <div v-if="!auth.isAuthenticated" class="max-w-md mx-auto text-center py-16 px-4 bg-white rounded-2xl shadow-soft">
+      <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-cream-dark mb-4">
+        <span class="text-3xl">🔒</span>
+      </div>
+      <h2 class="font-display text-xl font-bold text-chocolate mb-2">Accès restreint</h2>
+      <p class="text-sm text-muted mb-6">Vous devez être connecté pour accéder à cette page.</p>
+      <RouterLink
+        to="/connexion"
+        class="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-caramel hover:bg-caramel-dark text-white font-semibold text-sm shadow-soft hover:shadow-card transition-all hover:-translate-y-0.5"
+      >
+        Se connecter
+      </RouterLink>
     </div>
+
+    <!-- Connecté -->
+    <div v-else class="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-8 items-start">
+
+      <!-- ═══ Informations personnelles ═══ -->
+      <section class="bg-white rounded-2xl shadow-soft p-6 md:p-8">
+        <div class="flex items-center gap-3 mb-6">
+          <div class="grid place-items-center w-10 h-10 rounded-xl bg-caramel/10">
+            <span class="text-xl">👤</span>
+          </div>
+          <h2 class="font-display text-xl font-bold text-chocolate">Informations personnelles</h2>
+        </div>
+
+        <form @submit.prevent="saveProfile" class="space-y-4">
+          <div>
+            <label class="block text-sm font-medium text-chocolate-soft mb-1.5">
+              Nom <span class="text-raspberry">*</span>
+            </label>
+            <input
+              v-model="profile.name"
+              required
+              class="w-full px-4 py-3 rounded-xl border-2 border-cream-dark bg-cream text-chocolate text-sm focus:outline-none focus:border-caramel focus:bg-white transition-colors"
+            />
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-chocolate-soft mb-1.5">
+              Email <span class="text-raspberry">*</span>
+            </label>
+            <input
+              v-model="profile.email"
+              type="email"
+              required
+              class="w-full px-4 py-3 rounded-xl border-2 border-cream-dark bg-cream text-chocolate text-sm focus:outline-none focus:border-caramel focus:bg-white transition-colors"
+            />
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-chocolate-soft mb-1.5">Téléphone</label>
+            <input
+              v-model="profile.phone"
+              type="tel"
+              class="w-full px-4 py-3 rounded-xl border-2 border-cream-dark bg-cream text-chocolate text-sm focus:outline-none focus:border-caramel focus:bg-white transition-colors"
+            />
+          </div>
+
+          <!-- Feedback -->
+          <p v-if="profileError" class="flex items-center gap-2 text-sm text-raspberry font-medium">
+            <span>⚠️</span> {{ profileError }}
+          </p>
+          <p v-if="profileSuccess" class="flex items-center gap-2 text-sm text-emerald-600 font-medium">
+            <span>✓</span> Profil mis à jour.
+          </p>
+
+          <button
+            type="submit"
+            :disabled="savingProfile"
+            class="w-full sm:w-auto px-6 py-3 rounded-full bg-caramel hover:bg-caramel-dark text-white font-semibold text-sm shadow-soft hover:shadow-card transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+          >
+            {{ savingProfile ? 'Enregistrement…' : 'Enregistrer' }}
+          </button>
+        </form>
+      </section>
+
+      <!-- ═══ Adresses ═══ -->
+      <section class="bg-white rounded-2xl shadow-soft p-6 md:p-8">
+        <div class="flex items-center justify-between gap-3 mb-6">
+          <div class="flex items-center gap-3">
+            <div class="grid place-items-center w-10 h-10 rounded-xl bg-caramel/10">
+              <span class="text-xl">📍</span>
+            </div>
+            <h2 class="font-display text-xl font-bold text-chocolate">Mes adresses</h2>
+          </div>
+          <button
+            @click="showAddressForm = !showAddressForm"
+            class="shrink-0 px-4 py-2 rounded-full text-xs md:text-sm font-semibold transition-all"
+            :class="showAddressForm
+              ? 'bg-cream-dark text-chocolate-soft hover:bg-cream'
+              : 'bg-caramel/10 text-caramel-dark hover:bg-caramel hover:text-white'"
+          >
+            {{ showAddressForm ? '✕ Annuler' : '+ Ajouter' }}
+          </button>
+        </div>
+
+        <!-- Formulaire d'ajout -->
+        <form v-if="showAddressForm" @submit.prevent="saveAddress" class="space-y-4 pb-6 mb-6 border-b border-cream-dark">
+          <div>
+            <label class="block text-sm font-medium text-chocolate-soft mb-1.5">
+              Libellé <span class="text-xs text-muted">(optionnel)</span>
+            </label>
+            <input
+              v-model="addressForm.label"
+              placeholder="Domicile, Bureau…"
+              class="w-full px-4 py-3 rounded-xl border-2 border-cream-dark bg-cream text-chocolate text-sm placeholder:text-muted/60 focus:outline-none focus:border-caramel focus:bg-white transition-colors"
+            />
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-chocolate-soft mb-1.5">
+              Destinataire <span class="text-raspberry">*</span>
+            </label>
+            <input
+              v-model="addressForm.recipient_name"
+              required
+              class="w-full px-4 py-3 rounded-xl border-2 border-cream-dark bg-cream text-chocolate text-sm focus:outline-none focus:border-caramel focus:bg-white transition-colors"
+            />
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-chocolate-soft mb-1.5">Téléphone</label>
+            <input
+              v-model="addressForm.phone"
+              type="tel"
+              class="w-full px-4 py-3 rounded-xl border-2 border-cream-dark bg-cream text-chocolate text-sm focus:outline-none focus:border-caramel focus:bg-white transition-colors"
+            />
+          </div>
+
+          <!-- Autocomplete adresse -->
+          <div>
+            <label class="block text-sm font-medium text-chocolate-soft mb-1.5">
+              Adresse <span class="text-raspberry">*</span>
+            </label>
+            <div class="relative">
+              <input
+                v-model="addressForm.street"
+                required
+                autocomplete="off"
+                @input="onAddressInput"
+                @focus="showSuggestions = suggestions.length > 0"
+                @blur="hideSuggestions"
+                class="w-full px-4 py-3 rounded-xl border-2 border-cream-dark bg-cream text-chocolate text-sm focus:outline-none focus:border-caramel focus:bg-white transition-colors"
+              />
+              <ul
+                v-if="showSuggestions && suggestions.length > 0"
+                class="absolute top-full left-0 right-0 mt-1 bg-white rounded-xl shadow-float border border-cream-dark py-1 max-h-64 overflow-y-auto z-20"
+              >
+                <li
+                  v-for="(s, i) in suggestions"
+                  :key="i"
+                  @mousedown.prevent="selectSuggestion(s)"
+                  class="px-4 py-2.5 text-sm text-chocolate-soft cursor-pointer border-l-3 border-transparent hover:bg-cream hover:text-caramel-dark hover:border-caramel transition-colors"
+                >
+                  {{ s.label }}
+                </li>
+              </ul>
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-chocolate-soft mb-1.5">Complément</label>
+            <input
+              v-model="addressForm.street_2"
+              class="w-full px-4 py-3 rounded-xl border-2 border-cream-dark bg-cream text-chocolate text-sm focus:outline-none focus:border-caramel focus:bg-white transition-colors"
+            />
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-chocolate-soft mb-1.5">
+                Code postal <span class="text-raspberry">*</span>
+              </label>
+              <input
+                v-model="addressForm.postal_code"
+                required
+                class="w-full px-4 py-3 rounded-xl border-2 border-cream-dark bg-cream text-chocolate text-sm focus:outline-none focus:border-caramel focus:bg-white transition-colors"
+              />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-chocolate-soft mb-1.5">
+                Ville <span class="text-raspberry">*</span>
+              </label>
+              <input
+                v-model="addressForm.city"
+                required
+                class="w-full px-4 py-3 rounded-xl border-2 border-cream-dark bg-cream text-chocolate text-sm focus:outline-none focus:border-caramel focus:bg-white transition-colors"
+              />
+            </div>
+          </div>
+
+          <label class="flex items-center gap-3 p-3 rounded-xl bg-cream hover:bg-cream-dark cursor-pointer transition-colors">
+            <input
+              v-model="addressForm.is_default"
+              type="checkbox"
+              class="w-4 h-4 accent-caramel cursor-pointer shrink-0"
+            />
+            <span class="text-sm font-medium text-chocolate-soft">
+              Définir comme adresse de livraison par défaut
+            </span>
+          </label>
+
+          <p v-if="addressError" class="flex items-center gap-2 text-sm text-raspberry font-medium">
+            <span>⚠️</span> {{ addressError }}
+          </p>
+
+          <button
+            type="submit"
+            :disabled="savingAddress"
+            class="w-full px-6 py-3 rounded-full bg-caramel hover:bg-caramel-dark text-white font-semibold text-sm shadow-soft hover:shadow-card transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+          >
+            {{ savingAddress ? 'Enregistrement…' : 'Ajouter l\'adresse' }}
+          </button>
+        </form>
+
+        <!-- Aucune adresse -->
+        <div v-if="addresses.length === 0" class="text-center py-10">
+          <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-cream-dark mb-3">
+            <span class="text-3xl">📍</span>
+          </div>
+          <p class="text-chocolate-soft font-medium">Aucune adresse enregistrée.</p>
+          <p class="text-xs text-muted italic mt-1">Ajoutez une adresse pour vos livraisons.</p>
+        </div>
+
+        <!-- Liste des adresses -->
+        <ul v-else class="space-y-3">
+          <li
+            v-for="addr in addresses"
+            :key="addr.id"
+            class="relative rounded-xl p-4 border-2 transition-colors"
+            :class="addr.is_default
+              ? 'bg-caramel/5 border-caramel'
+              : 'bg-cream border-transparent'"
+          >
+            <!-- Header adresse -->
+            <div class="flex items-start justify-between gap-3 mb-2">
+              <div class="flex items-center gap-2 flex-wrap min-w-0">
+                <span class="text-base shrink-0">{{ addr.label ? '🏠' : '📍' }}</span>
+                <strong class="text-sm font-bold text-chocolate truncate">{{ addr.label || 'Adresse' }}</strong>
+                <span
+                  v-if="addr.is_default"
+                  class="px-2 py-0.5 rounded-full bg-caramel text-white text-[10px] font-bold uppercase tracking-wider"
+                >
+                  Par défaut
+                </span>
+              </div>
+              <button
+                @click="deleteAddress(addr)"
+                title="Supprimer"
+                class="grid place-items-center w-7 h-7 rounded-full text-muted hover:bg-raspberry hover:text-white transition-colors shrink-0"
+              >
+                ✕
+              </button>
+            </div>
+
+            <p class="text-sm font-semibold text-chocolate mb-1">{{ addr.recipient_name }}</p>
+            <p class="text-sm text-muted">
+              {{ addr.street }}<span v-if="addr.street_2">, {{ addr.street_2 }}</span>
+            </p>
+            <p class="text-sm text-muted">{{ addr.postal_code }} {{ addr.city }}</p>
+            <p v-if="addr.phone" class="text-xs text-muted mt-1.5">📞 {{ addr.phone }}</p>
+
+            <button
+              v-if="!addr.is_default"
+              @click="setDefault(addr)"
+              class="mt-3 px-3 py-1.5 rounded-full bg-white border-2 border-caramel text-caramel-dark hover:bg-caramel hover:text-white text-xs font-semibold transition-colors"
+            >
+              Définir par défaut
+            </button>
+            <button
+              v-else
+              @click="unsetDefault(addr)"
+              class="mt-3 px-3 py-1.5 rounded-full bg-transparent border-2 border-cream-dark text-muted hover:bg-white hover:text-chocolate text-xs font-semibold transition-colors"
+            >
+              Retirer le défaut
+            </button>
+          </li>
+        </ul>
+
+        <!-- Info fallback -->
+        <div
+          v-if="addresses.length > 0 && !hasDefault"
+          class="mt-4 p-3 rounded-xl bg-caramel/8 text-caramel-dark text-xs leading-relaxed"
+        >
+          ℹ️ Aucune adresse par défaut : la livraison utilisera les coordonnées de votre compte.
+        </div>
+      </section>
+    </div>
+  </div>
 </template>
 
 <script setup>
@@ -268,193 +461,3 @@ onMounted(async () => {
     if (auth.isAuthenticated) await loadAddresses();
 });
 </script>
-
-<style scoped>
-.address-form {
-    margin-bottom: 2rem;
-    padding-bottom: 2rem;
-    border-bottom: 1px solid var(--cream-dark);
-}
-
-.address-form .btn-primary {
-    margin-top: 0.5rem;
-}
-
-.address-form .address-label {
-    grid-column: 1 / -1;
-    width: 100%;
-}
-
-.address-form .address-label .autocomplete,
-.address-form .address-label input {
-    width: 100%;
-}
-
-.account-page { padding: 1rem 0 4rem; }
-.account-page h1 { font-size: 2.5rem; margin-bottom: 2rem; }
-.account-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; align-items: start; }
-.card { background: white; border-radius: var(--radius); padding: 1.75rem; box-shadow: var(--shadow-sm); }
-.card h2 { font-size: 1.3rem; margin-bottom: 1.25rem; }
-.card-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; }
-.card-head h2 { margin: 0; }
-form { display: flex; flex-direction: column; gap: 1rem; }
-label { display: flex; flex-direction: column; gap: 0.4rem; font-size: 0.9rem; font-weight: 500; color: var(--text-muted); }
-label.checkbox {
-    flex-direction: row;
-    align-items: center;
-    gap: 0.6rem;
-    padding: 0.75rem 1rem;
-    background: var(--cream);
-    border-radius: var(--radius-sm);
-    cursor: pointer;
-    font-size: 0.9rem;
-    font-weight: 500;
-    color: var(--chocolate-soft);
-    transition: background 0.2s;
-}
-
-label.checkbox:hover {
-    background: var(--cream-dark);
-}
-
-label.checkbox input[type="checkbox"] {
-    width: 18px;
-    height: 18px;
-    accent-color: var(--caramel);
-    cursor: pointer;
-    flex-shrink: 0;
-}
-input { padding: 0.75rem 1rem; border: 1.5px solid var(--cream-dark); border-radius: var(--radius-sm); font-family: inherit; font-size: 0.95rem; background: var(--cream); }
-input:focus { outline: none; border-color: var(--caramel); background: white; }
-.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
-.btn-secondary.small { padding: 0.5rem 1rem; font-size: 0.85rem; }
-.btn-secondary { background: white; color: var(--caramel); border: 1.5px solid var(--caramel); padding: 0.6rem 1.2rem; border-radius: 999px; font-weight: 600; }
-
-/* Cartes d'adresses */
-.addresses { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 1rem; }
-.address-card {
-    background: var(--cream);
-    border-radius: var(--radius-sm);
-    padding: 1.25rem;
-    border: 1.5px solid transparent;
-    transition: all 0.2s;
-}
-.address-card:has(.default-badge) {
-    border-color: var(--caramel);
-    background: rgba(201, 123, 63, 0.05);
-}
-.address-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    margin-bottom: 0.75rem;
-}
-.address-title {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    flex-wrap: wrap;
-}
-.address-icon { font-size: 1.1rem; }
-.address-title strong { font-size: 1rem; color: var(--chocolate); }
-.default-badge {
-    background: var(--caramel);
-    color: white;
-    padding: 0.15rem 0.6rem;
-    border-radius: 999px;
-    font-size: 0.7rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-}
-.address-recipient { font-weight: 600; color: var(--chocolate); margin: 0 0 0.25rem; font-size: 0.95rem; }
-.address-line { margin: 0; font-size: 0.9rem; color: var(--text-muted); }
-.address-phone { margin: 0.5rem 0 0; font-size: 0.85rem; color: var(--text-muted); }
-.remove {
-    color: var(--text-muted);
-    font-size: 0.9rem;
-    width: 28px;
-    height: 28px;
-    border-radius: 50%;
-    transition: all 0.2s;
-    flex-shrink: 0;
-}
-.remove:hover { background: var(--raspberry); color: white; }
-.btn-default, .btn-unset {
-    margin-top: 0.85rem;
-    padding: 0.45rem 1rem;
-    border-radius: 999px;
-    font-size: 0.8rem;
-    font-weight: 600;
-    transition: all 0.2s;
-}
-.btn-default {
-    background: white;
-    color: var(--caramel-dark);
-    border: 1.5px solid var(--caramel);
-}
-.btn-default:hover { background: var(--caramel); color: white; }
-.btn-unset {
-    background: transparent;
-    color: var(--text-muted);
-    border: 1.5px solid var(--cream-dark);
-}
-.btn-unset:hover { background: white; color: var(--chocolate); }
-
-.empty { text-align: center; padding: 2.5rem 1rem; color: var(--text-muted); }
-.empty-emoji { font-size: 2.5rem; display: block; margin-bottom: 0.75rem; }
-.empty .hint { font-size: 0.85rem; font-style: italic; margin-top: 0.25rem; }
-.info-fallback {
-    margin-top: 1rem;
-    padding: 0.75rem 1rem;
-    background: rgba(201, 123, 63, 0.08);
-    color: var(--caramel-dark);
-    border-radius: var(--radius-sm);
-    font-size: 0.85rem;
-}
-
-.error { color: var(--raspberry); font-size: 0.85rem; }
-.success { color: #059669; font-size: 0.85rem; font-weight: 600; }
-
-.autocomplete { position: relative; }
-.suggestions {
-    position: absolute;
-    top: calc(100% + 4px);
-    left: 0;
-    right: 0;
-    background: white;
-    border: 1.5px solid var(--cream-dark);
-    border-radius: var(--radius-sm);
-    box-shadow: var(--shadow-md);
-    list-style: none;
-    padding: 0.35rem 0;
-    margin: 0;
-    z-index: 10;
-    max-height: 260px;
-    overflow-y: auto;
-}
-
-.suggestions li {
-    padding: 0.7rem 1rem;
-    font-size: 0.9rem;
-    color: var(--chocolate-soft);
-    cursor: pointer;
-    transition: background 0.15s, color 0.15s;
-    border-left: 3px solid transparent;
-}
-
-.suggestions li:hover {
-    background: var(--cream);
-    color: var(--caramel-dark);
-    border-left-color: var(--caramel);
-}
-
-.suggestions li:active {
-    background: rgba(201, 123, 63, 0.1);
-}
-
-@media (max-width: 900px) {
-    .account-layout { grid-template-columns: 1fr; }
-    .grid-2 { grid-template-columns: 1fr; }
-}
-</style>
