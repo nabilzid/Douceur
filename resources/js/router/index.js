@@ -19,6 +19,28 @@ const routes = [
     { path: '/evenements', name: 'events', component: () => import('../pages/EventPackagesPage.vue') },
     { path: '/evenements/:slug/demande', name: 'event-request', component: () => import('../pages/EventRequestPage.vue') },
 
+    // ✅ Suivi de commande standard
+    { path: '/suivi-commande', name: 'track-order', component: () => import('../pages/TrackOrderPage.vue') },
+
+    // ✅ Lien signé email commande standard : /commande/CMD-xxx?expires=&signature=
+    // Utilise le même composant que /suivi-commande, qui lit le :reference
+    {
+        path: '/commande/:reference',
+        name: 'track-order-signed',
+        component: () => import('../pages/TrackOrderPage.vue'),
+    },
+
+    // ✅ Suivi de demande sur mesure
+    { path: '/suivi-demande', name: 'track-custom-order', component: () => import('../pages/TrackCustomOrderPage.vue') },
+
+    // ✅ Lien signé email demande sur mesure : /demande/SUR-xxx?expires=&signature=
+    // Utilise le même composant que /suivi-demande, qui lit le :reference
+    {
+        path: '/demande/:reference',
+        name: 'track-custom-order-signed',
+        component: () => import('../pages/TrackCustomOrderPage.vue'),
+    },
+
     // ✅ Un seul groupe /admin
     {
         path: '/admin',
@@ -36,9 +58,6 @@ const routes = [
     },
 
     { path: '/:pathMatch(.*)*', name: 'not-found', component: () => import('../pages/NotFoundPage.vue') },
-    { path: '/suivi-commande', name: 'track-order', component: () => import('../pages/TrackOrderPage.vue') },
-    { path: '/suivi-demande', name: 'track-custom-order', component: () => import('../pages/TrackCustomOrderPage.vue') },
-    { path: '/suivi-demande', name: 'track-custom-order', component: () => import('../pages/TrackCustomOrderPage.vue') },
 ];
 
 const router = createRouter({

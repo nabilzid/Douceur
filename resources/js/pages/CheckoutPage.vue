@@ -1,4 +1,4 @@
-
+<!-- Page finaliser une commande invité -->
 <template>
     <main class="mx-auto min-h-screen max-w-7xl px-4 py-8 sm:px-6 sm:py-10 lg:px-8">
         <header class="mb-8 sm:mb-10">
@@ -21,7 +21,7 @@
             </p>
         </header>
 
-        <!-- Commande confirmée -->
+        Commande confirmée
         <section
             v-if="success"
             class="mx-auto max-w-2xl rounded-3xl border border-cream-dark bg-white px-6 py-12 text-center shadow-card sm:px-10"

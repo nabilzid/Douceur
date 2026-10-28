@@ -42,7 +42,10 @@ Route::get('/orders/{reference}', [OrderController::class, 'show']);
 // ⚠️ ORDRE CRITIQUE : /mine AVANT /{reference}
 Route::post('/custom-orders', [CustomOrderController::class, 'store']);
 Route::get('/custom-orders/mine', [CustomOrderController::class, 'mine'])->middleware('auth:sanctum');
-Route::get('/custom-orders/{reference}', [CustomOrderController::class, 'show']);
+Route::get('/custom-orders/{reference}', [CustomOrderController::class, 'show'])
+    ->name('custom-orders.view');
+
+// Webhook Stripe (public, signé par Stripe, pas de CSRF)
 
 // Webhook Stripe (public, signé par Stripe, pas de CSRF)
 Route::post('/stripe/webhook', [PaymentController::class, 'webhook']);

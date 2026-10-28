@@ -1,8 +1,16 @@
 <template>
   <div class="min-h-screen flex flex-col bg-cream">
-    <AppHeader />
+    <!-- Header + Footer publics : uniquement hors /admin -->
+    <template v-if="!isAdminRoute">
+      <AppHeader />
+    </template>
 
-    <main class="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
+    <!-- Contenu -->
+    <main
+      :class="isAdminRoute
+        ? 'flex-1'
+        : 'flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12'"
+    >
       <RouterView v-slot="{ Component }">
         <Transition name="page" mode="out-in">
           <component :is="Component" />
@@ -10,13 +18,21 @@
       </RouterView>
     </main>
 
-    <AppFooter />
+    <!-- Footer public uniquement hors /admin -->
+    <AppFooter v-if="!isAdminRoute" />
   </div>
 </template>
 
 <script setup>
+import { computed } from 'vue';
+import { useRoute } from 'vue-router';
 import AppHeader from './components/layout/AppHeader.vue';
 import AppFooter from './components/layout/AppFooter.vue';
+
+const route = useRoute();
+
+// ✅ Toutes les routes /admin utilisent leur propre layout
+const isAdminRoute = computed(() => route.path.startsWith('/admin'));
 </script>
 
 <style scoped>

@@ -1,286 +1,438 @@
+```vue
 <template>
-    <div class="dashboard">
-        <header class="dashboard-header">
-            <div>
-                <h1>Tableau de bord</h1>
-                <p class="subtitle">
-                    {{ isAdmin ? 'Vue globale de la plateforme' : 'Vue de votre boutique' }}
-                </p>
-            </div>
-            <span class="date-badge">{{ today }}</span>
-        </header>
+  <div class="mx-auto max-w-7xl space-y-8">
 
-        <div v-if="loading" class="state">
-            <div class="spinner"></div>
-            <p>Chargement des statistiques…</p>
-        </div>
+    <!-- HEADER -->
+    <header class="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+      <div>
+        <p class="mb-2 text-xs font-bold uppercase tracking-[0.18em] text-caramel-dark">
+          Administration
+        </p>
 
-        <!-- ✅ ADMIN : stats globales -->
-        <div v-else-if="isAdmin" class="stats-grid">
-            <article class="stat-card">
-                <div class="stat-icon users">👥</div>
-                <div class="stat-body">
-                    <span class="stat-label">Utilisateurs</span>
-                    <span class="stat-value">{{ adminStats.total_users ?? 0 }}</span>
-                    <span class="stat-detail">
-                        {{ adminStats.total_customers ?? 0 }} clients · {{ adminStats.total_merchants ?? 0 }} commerçants
-                    </span>
-                </div>
-            </article>
+        <h1 class="font-display text-3xl font-bold text-chocolate md:text-4xl">
+          Tableau de bord
+        </h1>
 
-            <article class="stat-card">
-                <div class="stat-icon orders">📦</div>
-                <div class="stat-body">
-                    <span class="stat-label">Commandes totales</span>
-                    <span class="stat-value">{{ adminStats.total_orders ?? 0 }}</span>
-                    <span class="stat-detail">{{ adminStats.pending_orders ?? 0 }} en attente</span>
-                </div>
-            </article>
+        <p class="mt-2 text-sm text-muted">
+          {{ isAdmin ? 'Vue globale de la plateforme' : 'Vue de votre boutique' }}
+        </p>
+      </div>
 
-            <article class="stat-card">
-                <div class="stat-icon revenue">💰</div>
-                <div class="stat-body">
-                    <span class="stat-label">Chiffre d'affaires</span>
-                    <span class="stat-value">{{ formatPrice(adminStats.total_revenue) }}</span>
-                    <span class="stat-detail">Commandes payées uniquement</span>
-                </div>
-            </article>
+      <span
+        class="inline-flex items-center gap-2 self-start rounded-full border border-cream-dark/70 bg-white px-4 py-2.5 text-xs font-medium capitalize text-chocolate-soft shadow-soft transition-shadow hover:shadow-card sm:self-auto md:text-sm"
+      >
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          class="size-4 text-caramel-dark"
+          stroke="currentColor"
+          stroke-width="1.8"
+          aria-hidden="true"
+        >
+          <rect x="3" y="5" width="18" height="16" rx="3" />
+          <path d="M16 3v4M8 3v4M3 10h18" />
+        </svg>
+        {{ today }}
+      </span>
+    </header>
 
-            <article class="stat-card">
-                <div class="stat-icon pending">⏳</div>
-                <div class="stat-body">
-                    <span class="stat-label">En attente</span>
-                    <span class="stat-value">{{ adminStats.pending_orders ?? 0 }}</span>
-                    <span class="stat-detail">À traiter</span>
-                </div>
-            </article>
-        </div>
-
-        <!-- ✅ PÂTISSIER : stats boutique (sans CA) -->
-        <div v-else class="stats-grid">
-            <article class="stat-card">
-                <div class="stat-icon products">🍰</div>
-                <div class="stat-body">
-                    <span class="stat-label">Produits</span>
-                    <span class="stat-value">{{ merchantStats.products_count ?? 0 }}</span>
-                    <span class="stat-detail">Actifs dans votre catalogue</span>
-                </div>
-            </article>
-
-            <article class="stat-card warning">
-                <div class="stat-icon lowstock">⚠️</div>
-                <div class="stat-body">
-                    <span class="stat-label">Stock faible</span>
-                    <span class="stat-value">{{ merchantStats.low_stock_count ?? 0 }}</span>
-                    <span class="stat-detail">Produits à réapprovisionner</span>
-                </div>
-            </article>
-
-            <article class="stat-card">
-                <div class="stat-icon today">📅</div>
-                <div class="stat-body">
-                    <span class="stat-label">Commandes aujourd'hui</span>
-                    <span class="stat-value">{{ merchantStats.orders_today ?? 0 }}</span>
-                    <span class="stat-detail">{{ merchantStats.pending_orders ?? 0 }} en attente</span>
-                </div>
-            </article>
-
-            <article class="stat-card">
-                <div class="stat-icon pending">⏳</div>
-                <div class="stat-body">
-                    <span class="stat-label">En attente</span>
-                    <span class="stat-value">{{ merchantStats.pending_orders ?? 0 }}</span>
-                    <span class="stat-detail">À traiter</span>
-                </div>
-            </article>
-        </div>
-
-        <!-- Raccourcis -->
-        <section v-if="!loading" class="shortcuts">
-            <h2>Raccourcis</h2>
-            <div class="shortcuts-grid">
-                <RouterLink to="/admin/commandes" class="shortcut">
-                    <span class="shortcut-icon">📋</span>
-                    <span>Voir les commandes</span>
-                </RouterLink>
-                <RouterLink to="/admin/produits" class="shortcut">
-                    <span class="shortcut-icon">🍰</span>
-                    <span>Gérer les produits</span>
-                </RouterLink>
-                <RouterLink to="/admin/sur-mesure" class="shortcut">
-                    <span class="shortcut-icon">🎂</span>
-                    <span>Demandes sur mesure</span>
-                </RouterLink>
-                <RouterLink v-if="isAdmin" to="/admin/parametres" class="shortcut">
-                    <span class="shortcut-icon">⚙️</span>
-                    <span>Paramètres</span>
-                </RouterLink>
-            </div>
-        </section>
+    <!-- CHARGEMENT -->
+    <div
+      v-if="loading"
+      class="flex min-h-64 flex-col items-center justify-center gap-3"
+    >
+      <div
+        class="size-10 animate-spin rounded-full border-4 border-caramel/20 border-t-caramel"
+      ></div>
+      <p class="text-sm text-muted">Chargement des statistiques…</p>
     </div>
+
+    <template v-else>
+      <!-- STATISTIQUES -->
+      <section class="mb-10 grid grid-cols-1 gap-4 sm:grid-cols-2 md:gap-5 lg:grid-cols-4">
+
+        <!-- ADMIN -->
+        <template v-if="isAdmin">
+          <article
+            class="group rounded-2xl border border-transparent bg-white p-5 shadow-soft transition-all duration-300 ease-out hover:-translate-y-1 hover:border-cream-dark hover:shadow-card md:p-6"
+          >
+            <div class="flex items-start gap-4">
+              <div
+                class="grid size-12 shrink-0 place-items-center rounded-xl bg-blue-100 text-2xl transition-transform duration-300 group-hover:scale-110 md:size-14"
+              >
+                👥
+              </div>
+
+              <div class="flex min-w-0 flex-1 flex-col">
+                <span class="text-[10px] font-bold uppercase tracking-wider text-muted">
+                  Utilisateurs
+                </span>
+
+                <span class="mt-1 font-display text-2xl font-bold leading-tight text-chocolate md:text-3xl">
+                  {{ adminStats.total_users ?? 0 }}
+                </span>
+
+                <span class="mt-1 text-xs leading-relaxed text-muted">
+                  {{ adminStats.total_customers ?? 0 }} clients
+                  <span class="mx-0.5 text-cream-dark">·</span>
+                  {{ adminStats.total_merchants ?? 0 }} commerçants
+                </span>
+              </div>
+            </div>
+          </article>
+
+          <article
+            class="group rounded-2xl border border-transparent bg-white p-5 shadow-soft transition-all duration-300 ease-out hover:-translate-y-1 hover:border-cream-dark hover:shadow-card md:p-6"
+          >
+            <div class="flex items-start gap-4">
+              <div
+                class="grid size-12 shrink-0 place-items-center rounded-xl bg-caramel/15 text-2xl transition-transform duration-300 group-hover:scale-110 md:size-14"
+              >
+                📦
+              </div>
+
+              <div class="flex min-w-0 flex-1 flex-col">
+                <span class="text-[10px] font-bold uppercase tracking-wider text-muted">
+                  Commandes totales
+                </span>
+
+                <span class="mt-1 font-display text-2xl font-bold leading-tight text-chocolate md:text-3xl">
+                  {{ adminStats.total_orders ?? 0 }}
+                </span>
+
+                <span class="mt-1 flex items-center gap-1.5 text-xs text-muted">
+                  <span class="size-1.5 rounded-full bg-amber-500"></span>
+                  {{ adminStats.pending_orders ?? 0 }} en attente
+                </span>
+              </div>
+            </div>
+          </article>
+
+          <article
+            class="group rounded-2xl border border-transparent bg-white p-5 shadow-soft transition-all duration-300 ease-out hover:-translate-y-1 hover:border-cream-dark hover:shadow-card md:p-6"
+          >
+            <div class="flex items-start gap-4">
+              <div
+                class="grid size-12 shrink-0 place-items-center rounded-xl bg-emerald-100 text-2xl transition-transform duration-300 group-hover:scale-110 md:size-14"
+              >
+                💰
+              </div>
+
+              <div class="flex min-w-0 flex-1 flex-col">
+                <span class="text-[10px] font-bold uppercase tracking-wider text-muted">
+                  Chiffre d'affaires
+                </span>
+
+                <span class="mt-1 break-words font-display text-2xl font-bold leading-tight text-chocolate md:text-3xl">
+                  {{ formatPrice(adminStats.total_revenue) }}
+                </span>
+
+                <span class="mt-1 text-xs leading-relaxed text-muted">
+                  Commandes payées uniquement
+                </span>
+              </div>
+            </div>
+          </article>
+
+          <article
+            class="group rounded-2xl border border-transparent bg-white p-5 shadow-soft transition-all duration-300 ease-out hover:-translate-y-1 hover:border-cream-dark hover:shadow-card md:p-6"
+          >
+            <div class="flex items-start gap-4">
+              <div
+                class="grid size-12 shrink-0 place-items-center rounded-xl bg-amber-100 text-2xl transition-transform duration-300 group-hover:scale-110 md:size-14"
+              >
+                ⏳
+              </div>
+
+              <div class="flex min-w-0 flex-1 flex-col">
+                <span class="text-[10px] font-bold uppercase tracking-wider text-muted">
+                  En attente
+                </span>
+
+                <span class="mt-1 font-display text-2xl font-bold leading-tight text-chocolate md:text-3xl">
+                  {{ adminStats.pending_orders ?? 0 }}
+                </span>
+
+                <span class="mt-1 text-xs text-muted">À traiter</span>
+              </div>
+            </div>
+          </article>
+        </template>
+
+        <!-- COMMERÇANT -->
+        <template v-else>
+          <article
+            class="group rounded-2xl border border-transparent bg-white p-5 shadow-soft transition-all duration-300 ease-out hover:-translate-y-1 hover:border-cream-dark hover:shadow-card md:p-6"
+          >
+            <div class="flex items-start gap-4">
+              <div
+                class="grid size-12 shrink-0 place-items-center rounded-xl bg-caramel/15 text-2xl transition-transform duration-300 group-hover:scale-110 md:size-14"
+              >
+                🍰
+              </div>
+
+              <div class="flex min-w-0 flex-1 flex-col">
+                <span class="text-[10px] font-bold uppercase tracking-wider text-muted">
+                  Produits
+                </span>
+
+                <span class="mt-1 font-display text-2xl font-bold leading-tight text-chocolate md:text-3xl">
+                  {{ merchantStats.products_count ?? 0 }}
+                </span>
+
+                <span class="mt-1 text-xs leading-relaxed text-muted">
+                  Actifs dans votre catalogue
+                </span>
+              </div>
+            </div>
+          </article>
+
+          <article
+            class="group rounded-2xl border-l-4 border-raspberry bg-white p-5 shadow-soft transition-all duration-300 ease-out hover:-translate-y-1 hover:shadow-card md:p-6"
+          >
+            <div class="flex items-start gap-4">
+              <div
+                class="grid size-12 shrink-0 place-items-center rounded-xl bg-raspberry/10 text-2xl transition-transform duration-300 group-hover:scale-110 md:size-14"
+              >
+                ⚠️
+              </div>
+
+              <div class="flex min-w-0 flex-1 flex-col">
+                <span class="text-[10px] font-bold uppercase tracking-wider text-muted">
+                  Stock faible
+                </span>
+
+                <span class="mt-1 font-display text-2xl font-bold leading-tight text-chocolate md:text-3xl">
+                  {{ merchantStats.low_stock_count ?? 0 }}
+                </span>
+
+                <span class="mt-1 text-xs leading-relaxed text-muted">
+                  Produits à réapprovisionner
+                </span>
+              </div>
+            </div>
+          </article>
+
+          <article
+            class="group rounded-2xl border border-transparent bg-white p-5 shadow-soft transition-all duration-300 ease-out hover:-translate-y-1 hover:border-cream-dark hover:shadow-card md:p-6"
+          >
+            <div class="flex items-start gap-4">
+              <div
+                class="grid size-12 shrink-0 place-items-center rounded-xl bg-caramel/15 text-2xl transition-transform duration-300 group-hover:scale-110 md:size-14"
+              >
+                📅
+              </div>
+
+              <div class="flex min-w-0 flex-1 flex-col">
+                <span class="text-[10px] font-bold uppercase tracking-wider text-muted">
+                  Aujourd'hui
+                </span>
+
+                <span class="mt-1 font-display text-2xl font-bold leading-tight text-chocolate md:text-3xl">
+                  {{ merchantStats.orders_today ?? 0 }}
+                </span>
+
+                <span class="mt-1 text-xs leading-relaxed text-muted">
+                  {{ merchantStats.pending_orders ?? 0 }} en attente
+                </span>
+              </div>
+            </div>
+          </article>
+
+          <article
+            class="group rounded-2xl border border-transparent bg-white p-5 shadow-soft transition-all duration-300 ease-out hover:-translate-y-1 hover:border-cream-dark hover:shadow-card md:p-6"
+          >
+            <div class="flex items-start gap-4">
+              <div
+                class="grid size-12 shrink-0 place-items-center rounded-xl bg-amber-100 text-2xl transition-transform duration-300 group-hover:scale-110 md:size-14"
+              >
+                ⏳
+              </div>
+
+              <div class="flex min-w-0 flex-1 flex-col">
+                <span class="text-[10px] font-bold uppercase tracking-wider text-muted">
+                  En attente
+                </span>
+
+                <span class="mt-1 font-display text-2xl font-bold leading-tight text-chocolate md:text-3xl">
+                  {{ merchantStats.pending_orders ?? 0 }}
+                </span>
+
+                <span class="mt-1 text-xs text-muted">À traiter</span>
+              </div>
+            </div>
+          </article>
+        </template>
+      </section>
+
+      <!-- RACCOURCIS -->
+      <section>
+        <div class="mb-5 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <p class="mb-2 text-xs font-bold uppercase tracking-[0.18em] text-caramel-dark">
+              Accès rapide
+            </p>
+
+            <h2 class="font-display text-xl font-bold text-chocolate md:text-2xl">
+              Raccourcis
+            </h2>
+
+            <p class="mt-1 text-sm text-muted">
+              Retrouvez rapidement vos outils de gestion.
+            </p>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <RouterLink
+            to="/admin/commandes"
+            class="group flex items-center gap-3 rounded-2xl border border-transparent bg-white p-4 shadow-soft transition-all duration-300 ease-out hover:-translate-y-1 hover:border-cream-dark hover:bg-caramel hover:shadow-card sm:p-5"
+          >
+            <span class="text-2xl transition-transform duration-300 group-hover:scale-110">
+              📋
+            </span>
+            <span class="flex-1 text-sm font-medium text-chocolate-soft transition-colors group-hover:text-white">
+              Voir les commandes
+            </span>
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              class="size-4 shrink-0 text-caramel-dark transition-all group-hover:translate-x-1 group-hover:text-white"
+              stroke="currentColor"
+              stroke-width="1.8"
+            >
+              <path d="M5 12h14M13 6l6 6-6 6" />
+            </svg>
+          </RouterLink>
+
+          <RouterLink
+            to="/admin/produits"
+            class="group flex items-center gap-3 rounded-2xl border border-transparent bg-white p-4 shadow-soft transition-all duration-300 ease-out hover:-translate-y-1 hover:border-cream-dark hover:bg-caramel hover:shadow-card sm:p-5"
+          >
+            <span class="text-2xl transition-transform duration-300 group-hover:scale-110">
+              🍰
+            </span>
+            <span class="flex-1 text-sm font-medium text-chocolate-soft transition-colors group-hover:text-white">
+              Gérer les produits
+            </span>
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              class="size-4 shrink-0 text-caramel-dark transition-all group-hover:translate-x-1 group-hover:text-white"
+              stroke="currentColor"
+              stroke-width="1.8"
+            >
+              <path d="M5 12h14M13 6l6 6-6 6" />
+            </svg>
+          </RouterLink>
+
+          <RouterLink
+            to="/admin/sur-mesure"
+            class="group flex items-center gap-3 rounded-2xl border border-transparent bg-white p-4 shadow-soft transition-all duration-300 ease-out hover:-translate-y-1 hover:border-cream-dark hover:bg-caramel hover:shadow-card sm:p-5"
+          >
+            <span class="text-2xl transition-transform duration-300 group-hover:scale-110">
+              🎂
+            </span>
+            <span class="flex-1 text-sm font-medium text-chocolate-soft transition-colors group-hover:text-white">
+              Demandes sur mesure
+            </span>
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              class="size-4 shrink-0 text-caramel-dark transition-all group-hover:translate-x-1 group-hover:text-white"
+              stroke="currentColor"
+              stroke-width="1.8"
+            >
+              <path d="M5 12h14M13 6l6 6-6 6" />
+            </svg>
+          </RouterLink>
+
+          <RouterLink
+            v-if="isAdmin"
+            to="/admin/parametres"
+            class="group flex items-center gap-3 rounded-2xl border border-transparent bg-white p-4 shadow-soft transition-all duration-300 ease-out hover:-translate-y-1 hover:border-cream-dark hover:bg-caramel hover:shadow-card sm:p-5"
+          >
+            <span class="text-2xl transition-transform duration-300 group-hover:scale-110">
+              ⚙️
+            </span>
+            <span class="flex-1 text-sm font-medium text-chocolate-soft transition-colors group-hover:text-white">
+              Paramètres
+            </span>
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              class="size-4 shrink-0 text-caramel-dark transition-all group-hover:translate-x-1 group-hover:text-white"
+              stroke="currentColor"
+              stroke-width="1.8"
+            >
+              <path d="M5 12h14M13 6l6 6-6 6" />
+            </svg>
+          </RouterLink>
+        </div>
+      </section>
+    </template>
+  </div>
 </template>
 
 <script setup>
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
-import axios from 'axios';
-import { useAuthStore } from '../../stores/auth';
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import axios from 'axios'
+import { useAuthStore } from '../../stores/auth'
 
-const auth = useAuthStore();
-const isAdmin = computed(() => auth.user?.role === 'admin');
+const auth = useAuthStore()
+const isAdmin = computed(() => auth.user?.role === 'admin')
 
-const adminStats = ref({});
-const merchantStats = ref({});
-const loading = ref(true);
+const adminStats = ref({})
+const merchantStats = ref({})
+const loading = ref(true)
 
-let pollInterval = null;
+let pollInterval = null
 
 const today = new Date().toLocaleDateString('fr-FR', {
-    weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
-});
+  weekday: 'long',
+  day: 'numeric',
+  month: 'long',
+  year: 'numeric',
+})
 
 function formatPrice(p) {
-    return new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(p ?? 0);
+  return new Intl.NumberFormat('fr-FR', {
+    style: 'currency',
+    currency: 'EUR',
+  }).format(p ?? 0)
 }
 
 async function load() {
-    try {
-        if (isAdmin.value) {
-            const { data } = await axios.get('/api/admin/dashboard');
-            adminStats.value = data;
-        } else {
-            const { data } = await axios.get('/api/merchant/dashboard');
-            merchantStats.value = data;
-        }
-    } catch {
-        // garder les données existantes
-    } finally {
-        loading.value = false;
+  try {
+    if (isAdmin.value) {
+      const { data } = await axios.get('/api/admin/dashboard')
+      adminStats.value = data
+    } else {
+      const { data } = await axios.get('/api/merchant/dashboard')
+      merchantStats.value = data
     }
+  } catch {
+    // Garder les données existantes en cas d'erreur.
+  } finally {
+    loading.value = false
+  }
+}
+
+function handleNotificationClick(event) {
+  if (event.detail?.url === '/admin/sur-mesure') {
+    load()
+  }
 }
 
 onMounted(() => {
-    load();
-    pollInterval = setInterval(load, 15 * 60 * 1000);
-    window.addEventListener('notification-clicked', handleNotificationClick);
-});
+  load()
+  pollInterval = setInterval(load, 15 * 60 * 1000)
+  window.addEventListener('notification-clicked', handleNotificationClick)
+})
 
 onBeforeUnmount(() => {
-    if (pollInterval) clearInterval(pollInterval);
-    window.removeEventListener('notification-clicked', handleNotificationClick);
-});
-
-function handleNotificationClick(event) {
-    if (event.detail.url === '/admin/sur-mesure') {
-        load();
-    }
-}
+  if (pollInterval) clearInterval(pollInterval)
+  window.removeEventListener('notification-clicked', handleNotificationClick)
+})
 </script>
-
-<style scoped>
-.dashboard { max-width: 1400px; margin: 0 auto; }
-
-.dashboard-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    margin-bottom: 2.5rem;
-    flex-wrap: wrap;
-    gap: 1rem;
-}
-.dashboard-header h1 { font-size: 2.25rem; margin: 0 0 0.5rem; color: var(--chocolate); }
-.subtitle { color: var(--text-muted); font-size: 1rem; margin: 0; }
-.date-badge {
-    background: white;
-    padding: 0.6rem 1.2rem;
-    border-radius: 999px;
-    font-size: 0.85rem;
-    font-weight: 500;
-    color: var(--chocolate-soft);
-    box-shadow: var(--shadow-sm);
-    text-transform: capitalize;
-}
-
-.state { text-align: center; padding: 4rem 1rem; color: var(--text-muted); }
-.spinner { width: 48px; height: 48px; border: 4px solid var(--cream-dark); border-top-color: var(--caramel); border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 1rem; }
-@keyframes spin { to { transform: rotate(360deg); } }
-
-.stats-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-    gap: 1.5rem;
-    margin-bottom: 3rem;
-}
-.stat-card {
-    background: white;
-    border-radius: var(--radius);
-    padding: 1.75rem;
-    box-shadow: var(--shadow-sm);
-    display: flex;
-    align-items: flex-start;
-    gap: 1.25rem;
-    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-    border: 1.5px solid transparent;
-}
-.stat-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); border-color: var(--cream-dark); }
-.stat-card.warning { border-left: 4px solid var(--raspberry); }
-
-.stat-icon {
-    width: 56px;
-    height: 56px;
-    border-radius: var(--radius-sm);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1.75rem;
-    flex-shrink: 0;
-}
-.stat-icon.users { background: rgba(59, 130, 246, 0.1); }
-.stat-icon.orders,
-.stat-icon.today { background: rgba(201, 123, 63, 0.12); }
-.stat-icon.revenue { background: rgba(5, 150, 105, 0.12); }
-.stat-icon.pending { background: rgba(234, 179, 8, 0.15); }
-.stat-icon.products { background: rgba(201, 123, 63, 0.12); }
-.stat-icon.lowstock { background: rgba(201, 79, 109, 0.12); }
-
-.stat-body { display: flex; flex-direction: column; gap: 0.25rem; flex: 1; min-width: 0; }
-.stat-label { font-size: 0.85rem; color: var(--text-muted); font-weight: 500; text-transform: uppercase; letter-spacing: 0.04em; }
-.stat-value { font-size: 2rem; font-weight: 700; color: var(--chocolate); line-height: 1.1; }
-.stat-detail { font-size: 0.8rem; color: var(--text-muted); margin-top: 0.25rem; }
-
-.shortcuts h2 { font-size: 1.4rem; margin-bottom: 1.25rem; color: var(--chocolate); }
-.shortcuts-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; }
-.shortcut {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    padding: 1.25rem 1.5rem;
-    background: white;
-    border-radius: var(--radius);
-    box-shadow: var(--shadow-sm);
-    color: var(--chocolate-soft);
-    font-weight: 500;
-    font-size: 0.95rem;
-    transition: all 0.2s;
-}
-.shortcut:hover {
-    transform: translateY(-2px);
-    box-shadow: var(--shadow-md);
-    background: var(--caramel);
-    color: white;
-    text-decoration: none;
-}
-.shortcut-icon { font-size: 1.5rem; }
-
-@media (max-width: 900px) {
-    .dashboard-header h1 { font-size: 1.75rem; }
-    .stats-grid { grid-template-columns: 1fr 1fr; gap: 1rem; }
-    .stat-card { padding: 1.25rem; }
-    .stat-value { font-size: 1.5rem; }
-    .stat-icon { width: 44px; height: 44px; font-size: 1.35rem; }
-}
-@media (max-width: 600px) {
-    .stats-grid { grid-template-columns: 1fr; }
-    .dashboard-header { flex-direction: column; align-items: flex-start; }
-    .shortcuts-grid { grid-template-columns: 1fr; }
-}
-</style>
+```

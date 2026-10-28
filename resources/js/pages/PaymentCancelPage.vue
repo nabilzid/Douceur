@@ -1,3 +1,4 @@
+<!-- Je pense elle n'est pas utilisée cette page -->
 <template>
     <div style="text-align:center;padding:4rem 1rem">
         <span style="font-size:4rem">😔</span>
