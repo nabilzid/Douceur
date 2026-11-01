@@ -612,8 +612,6 @@ const form = reactive({
 });
 const allergensInput = ref('');
 
-let pollInterval = null;
-
 // ═══ Stats ═══
 const stats = computed(() => {
   const lowStock = products.value.filter(p => p.stock_quantity <= p.low_stock_threshold);
@@ -651,7 +649,6 @@ const stats = computed(() => {
 const filteredProducts = computed(() => {
   let result = [...products.value];
 
-  // Filtre stat (actifs/inactifs/stock faible)
   if (activeStat.value === 'active') {
     result = result.filter(p => p.is_active);
   } else if (activeStat.value === 'inactive') {
@@ -660,12 +657,10 @@ const filteredProducts = computed(() => {
     result = result.filter(p => p.stock_quantity <= p.low_stock_threshold);
   }
 
-  // Filtre type
   if (typeFilter.value !== 'all') {
     result = result.filter(p => p.product_type_id === typeFilter.value);
   }
 
-  // Recherche
   const query = search.value.trim().toLowerCase();
   if (query) {
     result = result.filter(p => {
@@ -674,7 +669,6 @@ const filteredProducts = computed(() => {
     });
   }
 
-  // Tri
   switch (sortMode.value) {
     case 'price_asc':
       result.sort((a, b) => (a.price ?? 0) - (b.price ?? 0));
@@ -706,9 +700,11 @@ function stockClasses(product) {
 }
 
 // ═══ Chargement ═══
-async function load() {
-  if (products.value.length) refreshing.value = true;
-  else loading.value = true;
+async function load({ silent = false } = {}) {
+  if (!silent) {
+    if (products.value.length) refreshing.value = true;
+    else loading.value = true;
+  }
 
   try {
     const [prodRes, typeRes] = await Promise.all([
@@ -719,7 +715,6 @@ async function load() {
     types.value = typeRes.data;
     products.value.forEach((p) => (adjustments[p.id] = adjustments[p.id] ?? null));
 
-    // Rafraîchir le produit actif si le panneau est ouvert
     if (activeProduct.value) {
       const refreshed = products.value.find(p => p.id === activeProduct.value.id);
       if (refreshed) activeProduct.value = refreshed;
@@ -818,7 +813,7 @@ async function saveProduct() {
       products.value.push(data);
     }
 
-    await load();
+    await load({ silent: true });
     closeModal();
   } catch (e) {
     error.value = e.response?.data?.message || 'Erreur lors de l\'enregistrement.';
@@ -845,7 +840,7 @@ async function adjustStock(product) {
 
   try {
     const { data } = await axios.post(`/api/merchant/products/${product.id}/stock`, {
-      quantity: Number(adjustment),  // ← était "adjustment", devient "quantity"
+      quantity: Number(adjustment),
     });
     Object.assign(product, data);
     adjustments[product.id] = null;
@@ -866,13 +861,13 @@ async function confirmDelete(product) {
   }
 }
 
-// ═══ Lifecycle ═══
-function handleNotificationClick(event) {
-  if (event.detail?.url === '/admin/produits') {
-    load();
-  }
+// ═══ Temps réel — rafraîchissement du stock ═══
+function handleStockChanged() {
+  if (saving.value) return;
+  load({ silent: true });
 }
 
+// ═══ Clavier + cycle de vie ═══
 function handleKeydown(event) {
   if (event.key === 'Escape') {
     if (showModal.value) closeModal();
@@ -886,15 +881,22 @@ watch(panelOpen, isOpen => {
 
 onMounted(() => {
   load();
-  pollInterval = setInterval(load, 15 * 60 * 1000);
-  window.addEventListener('notification-clicked', handleNotificationClick);
+
+  // ✅ Écouter les CustomEvents émis par NotificationBell (Reverb → DOM)
+  window.addEventListener('new-order-received', handleStockChanged);
+  window.addEventListener('order-cancelled', handleStockChanged);
+  window.addEventListener('stock-updated', handleStockChanged);
+  window.addEventListener('product-updated', handleStockChanged);   // ← AJOUT
   window.addEventListener('keydown', handleKeydown);
 });
 
 onBeforeUnmount(() => {
-  if (pollInterval) clearInterval(pollInterval);
-  window.removeEventListener('notification-clicked', handleNotificationClick);
+  window.removeEventListener('new-order-received', handleStockChanged);
+  window.removeEventListener('order-cancelled', handleStockChanged);
+  window.removeEventListener('stock-updated', handleStockChanged);
+  window.removeEventListener('product-updated', handleStockChanged);   // ← AJOUT
   window.removeEventListener('keydown', handleKeydown);
+
   document.body.style.overflow = '';
 });
 </script>

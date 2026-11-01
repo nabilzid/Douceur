@@ -29,10 +29,16 @@ class AuthController extends Controller
             'is_active' => true,
         ]);
 
+        // ✅ Envoyer le mail de vérification
+        $user->sendEmailVerificationNotification();
+
         Auth::login($user);
         $request->session()->regenerate();
 
-        return response()->json(['user' => $user], 201);
+        return response()->json([
+            'user' => $user,
+            'message' => 'Un email de vérification vous a été envoyé.',
+        ], 201);
     }
 
     public function login(Request $request)

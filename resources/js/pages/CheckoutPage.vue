@@ -21,7 +21,7 @@
             </p>
         </header>
 
-        Commande confirmée
+        <!-- Commande confirmée -->
         <section
             v-if="success"
             class="mx-auto max-w-2xl rounded-3xl border border-cream-dark bg-white px-6 py-12 text-center shadow-card sm:px-10"
@@ -76,6 +76,31 @@
         >
             <!-- Formulaire -->
             <div class="min-w-0 space-y-5">
+                <!-- Message de synchronisation du stock -->
+                <div
+                    v-if="stockChanges.length > 0"
+                    role="alert"
+                    class="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 sm:p-5"
+                >
+                    <p class="font-bold">Votre panier a été mis à jour</p>
+                    <ul class="mt-2 list-disc space-y-1 pl-5 text-xs sm:text-sm">
+                        <li v-for="(change, i) in stockChanges" :key="i">
+                            <template v-if="change.type === 'removed'">
+                                <strong>{{ change.name }}</strong> n'est plus disponible et a été retiré.
+                            </template>
+                            <template v-else-if="change.type === 'out_of_stock'">
+                                <strong>{{ change.name }}</strong> est en rupture de stock et a été retiré.
+                            </template>
+                            <template v-else-if="change.type === 'reduced'">
+                                <strong>{{ change.name }}</strong> : quantité réduite à {{ change.newQty }} (stock limité).
+                            </template>
+                        </li>
+                    </ul>
+                    <p class="mt-3 text-xs">
+                        Merci de vérifier votre panier avant de confirmer.
+                    </p>
+                </div>
+
                 <!-- Coordonnées -->
                 <section class="rounded-3xl border border-cream-dark bg-white p-5 shadow-soft sm:p-7">
                     <div class="mb-6 flex items-start gap-4">
@@ -229,7 +254,7 @@
                     </div>
 
                     <div v-else class="space-y-4">
-                        <div>
+                        <div class="relative">
                             <label for="checkout-address" class="mb-2 block text-sm font-semibold text-chocolate">
                                 Adresse <span class="text-raspberry">*</span>
                             </label>
@@ -237,11 +262,29 @@
                                 id="checkout-address"
                                 v-model.trim="form.address"
                                 type="text"
-                                autocomplete="street-address"
+                                autocomplete="off"
                                 placeholder="Numéro et nom de rue"
                                 required
                                 class="w-full rounded-xl border border-cream-dark bg-cream px-4 py-3 text-sm text-chocolate outline-none transition placeholder:text-muted/70 focus:border-caramel focus:bg-white"
+                                @input="onAddressInput"
+                                @focus="showSuggestions = suggestions.length > 0"
+                                @blur="hideSuggestions"
                             />
+
+                            <!-- Suggestions d'adresses -->
+                            <ul
+                                v-if="showSuggestions && suggestions.length > 0"
+                                class="absolute left-0 right-0 top-full z-20 mt-1 max-h-64 overflow-y-auto rounded-xl border border-cream-dark bg-white py-1 shadow-lg"
+                            >
+                                <li
+                                    v-for="(s, i) in suggestions"
+                                    :key="i"
+                                    class="cursor-pointer border-l-2 border-transparent px-4 py-2.5 text-sm text-chocolate transition hover:border-caramel hover:bg-cream"
+                                    @mousedown.prevent="selectSuggestion(s)"
+                                >
+                                    {{ s.label }}
+                                </li>
+                            </ul>
                         </div>
 
                         <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -409,9 +452,17 @@
                         </span>
                     </div>
 
+                    <!-- Bandeau d'alerte si stock invalide -->
+                    <div
+                        v-if="cart.hasStockIssue"
+                        class="mt-5 rounded-2xl border border-raspberry/20 bg-raspberry/5 p-4 text-xs leading-5 text-raspberry"
+                    >
+                        Certains produits ne sont plus disponibles en quantité suffisante. Vérifiez votre panier avant de commander.
+                    </div>
+
                     <button
                         type="submit"
-                        :disabled="submitting || cart.items.length === 0"
+                        :disabled="submitting || !cart.canCheckout"
                         class="mt-6 flex w-full items-center justify-center gap-2 rounded-full bg-caramel px-5 py-4 font-bold text-white shadow-sm transition hover:bg-caramel-dark disabled:cursor-not-allowed disabled:opacity-60"
                     >
                         <span>{{ submitting ? 'Traitement en cours…' : 'Confirmer la commande' }}</span>
@@ -433,7 +484,7 @@
 </template>
 
 <script setup>
-import { onMounted, reactive, ref } from 'vue';
+import { onMounted, onUnmounted, reactive, ref } from 'vue';
 import axios from 'axios';
 import { useCartStore } from '../stores/cart';
 import { useAuthStore } from '../stores/auth';
@@ -458,6 +509,72 @@ const error = ref(null);
 const success = ref(null);
 const addresses = ref([]);
 const selectedAddressId = ref(null);
+const stockChanges = ref([]);
+
+/* ─────────────────────────────────────────────────────────────
+   Autocomplétion d'adresse (API Adresse.data.gouv.fr)
+   ───────────────────────────────────────────────────────────── */
+
+const suggestions = ref([]);
+const showSuggestions = ref(false);
+let debounceTimer = null;
+
+/**
+ * Masque le dropdown après un court délai, pour laisser
+ * le @mousedown de la suggestion se déclencher avant le @blur.
+ */
+function hideSuggestions() {
+    window.setTimeout(() => {
+        showSuggestions.value = false;
+    }, 200);
+}
+
+/**
+ * Debounce la recherche à chaque frappe sur le champ adresse.
+ */
+function onAddressInput() {
+    clearTimeout(debounceTimer);
+    const query = form.address;
+
+    if (!query || query.length < 3) {
+        suggestions.value = [];
+        showSuggestions.value = false;
+        return;
+    }
+
+    debounceTimer = setTimeout(async () => {
+        try {
+            const res = await fetch(
+                `https://api-adresse.data.gouv.fr/search/?q=${encodeURIComponent(query)}&limit=5&citycode=13055`
+            );
+            const data = await res.json();
+            suggestions.value = data.features.map((f) => ({
+                label: f.properties.label,
+                street: f.properties.name,
+                postalCode: f.properties.postcode,
+                city: f.properties.city,
+            }));
+            showSuggestions.value = true;
+        } catch {
+            suggestions.value = [];
+        }
+    }, 300);
+}
+
+/**
+ * Remplit le formulaire avec l'adresse sélectionnée.
+ */
+function selectSuggestion(s) {
+    form.address = s.street;
+    form.postalCode = s.postalCode;
+    form.city = s.city;
+    suggestions.value = [];
+    showSuggestions.value = false;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   Helpers
+   ───────────────────────────────────────────────────────────── */
 
 const emojiMap = {
     cake: '🍰',
@@ -515,19 +632,26 @@ async function loadAddresses() {
     }
 }
 
+/**
+ * Synchronise le panier avec le stock réel.
+ * Retourne un message d'erreur à afficher, ou null si tout est OK.
+ */
 async function validateStock() {
-    for (const item of cart.items) {
-        try {
-            const { data } = await axios.get(`/api/products/${item.slug}`);
+    const changes = await cart.syncStock();
 
-            if (!data || data.stock_quantity < item.quantity) {
-                return `Stock insuffisant pour ${item.name}. Quantité disponible : ${data?.stock_quantity ?? 0}.`;
-            }
-        } catch {
-            return `Le produit ${item.name} n'est plus disponible.`;
-        }
+    if (changes.length > 0) {
+        stockChanges.value = changes;
+
+        const messages = changes.map((c) => {
+            if (c.type === 'removed') return `"${c.name}" n'est plus disponible et a été retiré.`;
+            if (c.type === 'out_of_stock') return `"${c.name}" est en rupture de stock et a été retiré.`;
+            return `"${c.name}" : quantité réduite à ${c.newQty} (stock limité).`;
+        });
+
+        return `Votre panier a été mis à jour : ${messages.join(' ')} Vérifiez avant de commander.`;
     }
 
+    stockChanges.value = [];
     return null;
 }
 
@@ -546,18 +670,34 @@ async function submit() {
 
         if (cart.isDelivery && !form.address.trim()) {
             error.value = 'Veuillez renseigner une adresse de livraison.';
+            submitting.value = false;
             return;
         }
 
+        // ✅ Synchronisation + vérification du stock
         const stockError = await validateStock();
 
         if (stockError) {
             error.value = stockError;
+            submitting.value = false;
+            return;
+        }
+
+        // ✅ Sécurité finale côté client (le backend revalidera avec lockForUpdate)
+        if (!cart.canCheckout) {
+            error.value = 'Votre panier contient des quantités indisponibles. Vérifiez-le avant de commander.';
+            submitting.value = false;
             return;
         }
 
         const order = await cart.submitOrder(form);
-        const { data } = await axios.post(`/api/orders/${order.reference}/checkout`);
+
+        // ✅ Contact obligatoire pour les invités (protection backend)
+        const checkoutPayload = auth.isAuthenticated ? {} : { contact: form.email };
+        const { data } = await axios.post(
+            `/api/orders/${order.reference}/checkout`,
+            checkoutPayload,
+        );
 
         if (!data?.checkout_url) {
             throw new Error('Le lien de paiement est indisponible. Veuillez réessayer.');
@@ -572,26 +712,10 @@ async function submit() {
 }
 
 onMounted(async () => {
-    // Recharger les stocks réels pour les produits du panier.
-    for (const item of [...cart.items]) {
-        try {
-            const { data } = await axios.get(`/api/products/${item.slug}`);
-
-            if (data.stock_quantity < item.quantity) {
-                if (data.stock_quantity > 0) {
-                    cart.updateQuantity(item.id, data.stock_quantity);
-                } else {
-                    cart.removeItem(item.id);
-                }
-            }
-
-            const storeItem = cart.items.find((i) => i.id === item.id);
-            if (storeItem) {
-                storeItem.stock_quantity = data.stock_quantity;
-            }
-        } catch {
-            cart.removeItem(item.id);
-        }
+    // ✅ Synchronise le stock au chargement (remplace la boucle manuelle)
+    const changes = await cart.syncStock();
+    if (changes.length > 0) {
+        stockChanges.value = changes;
     }
 
     // Les adresses enregistrées sont chargées uniquement pour les comptes connectés.
@@ -607,5 +731,10 @@ onMounted(async () => {
     }
 
     await loadSlots();
+});
+
+onUnmounted(() => {
+    // Évite qu'un debounce en attente déclenche un fetch sur un composant démonté.
+    clearTimeout(debounceTimer);
 });
 </script>

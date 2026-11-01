@@ -20,6 +20,14 @@ class OrderConfirmation extends Notification
 
     public function toMail(object $notifiable): MailMessage
     {
+        // ✅ Toujours /suivi-commande, mais on ajoute le contact pour les invités
+        $trackUrl = url('/suivi-commande?reference=' . urlencode($this->order->reference));
+
+        // Si pas de compte client → on pré-remplit le contact
+        if (! $this->order->user_id && $this->order->customer_email) {
+            $trackUrl .= '&contact=' . urlencode($this->order->customer_email);
+        }
+
         return (new MailMessage)
             ->subject("Votre commande {$this->order->reference} est confirmée")
             ->greeting("Bonjour {$this->order->customer_name},")
@@ -29,7 +37,7 @@ class OrderConfirmation extends Notification
             ->line($this->order->delivery_type === 'delivery'
                 ? 'Livraison prévue à l\'adresse : ' . $this->order->delivery_address
                 : 'Retrait en boutique.')
-            ->action('Suivre ma commande', url('/suivi-commande?reference=' . $this->order->reference))
+            ->action('Suivre ma commande', $trackUrl)
             ->line('À très vite pour de nouvelles douceurs !')
             ->salutation('L\'équipe Douceur');
     }

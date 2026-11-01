@@ -16,6 +16,29 @@
       </p>
     </header>
 
+    <!-- ✅ Message de synchronisation du stock -->
+    <div
+      v-if="stockChanges.length > 0"
+      class="mb-6 rounded-2xl border border-caramel/30 bg-caramel/5 p-4 text-sm text-chocolate-soft sm:p-5"
+    >
+      <p class="font-semibold text-caramel-dark">
+        Votre panier a été mis à jour
+      </p>
+      <ul class="mt-2 list-disc space-y-1 pl-5 text-xs sm:text-sm">
+        <li v-for="(change, i) in stockChanges" :key="i">
+          <template v-if="change.type === 'removed'">
+            <strong>{{ change.name }}</strong> n'est plus disponible et a été retiré.
+          </template>
+          <template v-else-if="change.type === 'out_of_stock'">
+            <strong>{{ change.name }}</strong> est en rupture de stock et a été retiré.
+          </template>
+          <template v-else-if="change.type === 'reduced'">
+            <strong>{{ change.name }}</strong> : quantité réduite à {{ change.newQty }} (stock limité).
+          </template>
+        </li>
+      </ul>
+    </div>
+
     <!-- Panier vide -->
     <section
       v-if="cart.items.length === 0"
@@ -315,10 +338,10 @@
 
         <!-- Validation -->
         <div
-          v-if="cart.items.some(item => item.stock_quantity === 0)"
+          v-if="cart.hasStockIssue"
           class="mt-5 rounded-xl bg-raspberry/5 p-3 text-xs leading-5 text-raspberry"
         >
-          Certains produits sont épuisés. Vérifiez votre panier avant de commander.
+          Certains produits ne sont plus disponibles en quantité suffisante. Vérifiez votre panier avant de commander.
         </div>
 
         <button
@@ -347,7 +370,7 @@
 </template>
 
 <script setup>
-import { computed } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useCartStore } from '../stores/cart';
 import { useSettingsStore } from '../stores/settings';
@@ -355,6 +378,8 @@ import { useSettingsStore } from '../stores/settings';
 const cart = useCartStore();
 const settings = useSettingsStore();
 const router = useRouter();
+
+const stockChanges = ref([]);
 
 const progressPercent = computed(() => {
   if (!cart.isDelivery) return 0;
@@ -391,7 +416,10 @@ function formatPrice(price) {
 
 function goToCheckout() {
   if (!cart.canCheckout) return;
-
   router.push('/commande');
 }
+
+onMounted(async () => {
+  stockChanges.value = await cart.syncStock();
+});
 </script>

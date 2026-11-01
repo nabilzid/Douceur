@@ -14,7 +14,10 @@ use App\Notifications\LowStockAlert;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Str;
+use App\Events\AdminNotificationCreated;
 
 class OrderController extends Controller
 {
@@ -51,7 +54,6 @@ class OrderController extends Controller
             $merchantId = null;
             $orderItemsData = [];
 
-            // ✅ 1. Calcul du sous-total + vérification du stock
             foreach ($items as $item) {
                 $product = $products->get($item['product_id']);
 
@@ -75,13 +77,11 @@ class OrderController extends Controller
                 ];
             }
 
-            // ✅ 2. Vérification du seuil de livraison
             $minDelivery = (float) Setting::get('delivery.min_order_amount', 15);
             if ($validated['delivery_type'] === 'delivery' && $subtotal < $minDelivery) {
                 abort(422, "Le montant minimum pour la livraison est de {$minDelivery}€.");
             }
 
-            // ✅ 3. Calcul des frais de livraison
             $deliveryFee = 0;
             if ($validated['delivery_type'] === 'delivery') {
                 $freeThreshold = (float) Setting::get('delivery.free_threshold', 30);
@@ -91,12 +91,10 @@ class OrderController extends Controller
 
             $total = $subtotal + $deliveryFee;
 
-            // ✅ 4. Coordonnées client
             $customerName = $user?->name ?? $validated['customer_name'];
             $customerEmail = $user?->email ?? $validated['customer_email'];
             $customerPhone = $user?->phone ?? $validated['customer_phone'];
 
-            // ✅ 5. Création de la commande
             $order = Order::create([
                 'reference' => 'CMD-' . now()->format('Ymd') . '-' . strtoupper(Str::random(4)),
                 'user_id' => $user?->id,
@@ -118,10 +116,8 @@ class OrderController extends Controller
                 'notes' => $validated['notes'] ?? null,
             ]);
 
-            // ✅ 6. Lignes de commande
             $order->items()->createMany($orderItemsData);
 
-            // ✅ 7. Décrémenter le stock + alerte
             foreach ($items as $item) {
                 $product = $products->get($item['product_id']);
                 $before = $product->stock_quantity;
@@ -141,12 +137,19 @@ class OrderController extends Controller
                 }
             }
 
-            // ✅ 8. Historique
             OrderStatusHistory::create([
                 'order_id' => $order->id,
                 'user_id' => $user?->id,
                 'status' => 'pending',
                 'comment' => 'Commande créée',
+            ]);
+
+            AdminNotificationCreated::dispatch([
+                'type' => 'new_order_pending',
+                'title' => "Nouvelle commande {$order->reference}",
+                'message' => "{$customerName} — en attente de paiement",
+                'url' => '/admin/commandes',
+                'icon' => '📦',
             ]);
 
             return response()->json([
@@ -169,21 +172,18 @@ class OrderController extends Controller
     {
         $validated = $request->validate([
             'reference' => 'required|string',
-            'contact' => 'nullable|string', // ← optionnel pour les connectés
+            'contact' => 'nullable|string',
         ]);
 
         $query = Order::where('reference', $validated['reference']);
 
-        // Si le client est connecté, on vérifie que la commande lui appartient
         if ($request->user()) {
             $order = $query->where('user_id', $request->user()->id)->with('items')->first();
             if ($order) {
                 return response()->json($this->formatOrder($order));
             }
-            // Si la commande n'appartient pas au client, on continue avec la vérification par contact
         }
 
-        // Sinon, vérification par email/téléphone
         if (! $validated['contact']) {
             abort(422, 'Veuillez fournir un email ou téléphone.');
         }
@@ -200,9 +200,12 @@ class OrderController extends Controller
         return response()->json($this->formatOrder($order));
     }
 
+    /**
+     * Formate une commande pour le client (avec facture si disponible).
+     */
     private function formatOrder(Order $order): array
     {
-        return [
+        $data = [
             'reference' => $order->reference,
             'status' => $order->status,
             'payment_status' => $order->payment_status,
@@ -222,5 +225,38 @@ class OrderController extends Controller
                 'line_total' => $item->line_total,
             ]),
         ];
+
+        // ✅ Ajouter la facture si elle existe
+        if ($order->invoice_path) {
+            $data['invoice_path'] = $order->invoice_path;
+            $data['invoice_number'] = $order->invoice_number;
+            $data['invoice_url'] = URL::signedRoute('orders.invoice', [
+                'reference' => $order->reference,
+            ]);
+        }
+
+        return $data;
+    }
+
+    public function downloadInvoice(Request $request, string $reference)
+    {
+        $order = Order::where('reference', $reference)->firstOrFail();
+
+        $isOwner = $order->user_id && $request->user()?->id === $order->user_id;
+        $isSigned = $request->hasValidSignature();
+        $isAdmin = $request->user()?->role === 'admin';
+
+        if (! $isOwner && ! $isSigned && ! $isAdmin) {
+            abort(403, 'Accès non autorisé à cette facture.');
+        }
+
+        if (! $order->invoice_path || ! Storage::disk('local')->exists($order->invoice_path)) {
+            abort(404, 'Facture introuvable.');
+        }
+
+        return response()->file(Storage::disk('local')->path($order->invoice_path), [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'inline; filename="facture-' . $order->invoice_number . '.pdf"',
+        ]);
     }
 }

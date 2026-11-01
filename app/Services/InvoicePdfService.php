@@ -47,4 +47,35 @@ class InvoicePdfService
 
         return $path;
     }
+
+    
+    /**
+     * Génère la facture d'une commande standard (boutique).
+     * Appelée une seule fois, quand la commande passe en "delivered".
+     */
+    public function generateOrder(\App\Models\Order $order): string
+    {
+        if ($order->invoice_path) {
+            return $order->invoice_path;
+        }
+
+        $number = $this->numberService->next();
+
+        $pdf = Pdf::loadView('pdf.facture-commande', [
+            'order' => $order->loadMissing('items', 'user'),
+            'invoiceNumber' => $number,
+            'issuedAt' => now(),
+        ])->setPaper('a4', 'portrait');
+
+        $path = 'factures/commandes/' . $number . '.pdf';
+        Storage::disk('local')->put($path, $pdf->output());
+
+        $order->update([
+            'invoice_number' => $number,
+            'invoice_path' => $path,
+            'invoiced_at' => now(),
+        ]);
+
+        return $path;
+    }
 }

@@ -363,6 +363,34 @@
                   </div>
                 </div>
               </Transition>
+              <Transition
+                  enter-active-class="transition duration-300 ease-out"
+                  enter-from-class="translate-y-2 opacity-0"
+                  enter-to-class="translate-y-0 opacity-100"
+                  leave-active-class="transition duration-200 ease-in"
+                  leave-from-class="opacity-100"
+                  leave-to-class="opacity-0"
+              >
+                  <div
+                      v-if="addError"
+                      class="mt-4 flex items-center gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4"
+                      role="alert"
+                      aria-live="polite"
+                  >
+                      <span class="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-amber-100 font-bold text-amber-700">
+                          !
+                      </span>
+
+                      <div>
+                          <p class="text-sm font-bold text-amber-800">
+                              Stock maximum atteint
+                          </p>
+                          <p class="mt-1 text-xs text-amber-700">
+                              {{ addError }}
+                          </p>
+                      </div>
+                  </div>
+              </Transition>
             </div>
 
             <!-- Réassurance -->
@@ -417,7 +445,7 @@ const loading = ref(true);
 const error = ref(null);
 const quantity = ref(1);
 const added = ref(false);
-
+const addError = ref(null);
 let addedTimeout;
 
 const emojiMap = {
@@ -454,23 +482,39 @@ function decrease() {
   }
 }
 
-function addToCart() {
-  if (!product.value || product.value.stock_quantity <= 0) {
-    return;
-  }
+async function addToCart() {
+    if (!product.value || product.value.stock_quantity <= 0) return;
 
-  if (quantity.value > product.value.stock_quantity) {
-    quantity.value = product.value.stock_quantity;
-  }
+    // ✅ Recharge le stock réel avant d'ajouter
+    try {
+        const { data } = await axios.get(`/api/products/${product.value.slug}`);
+        product.value = data; // rafraîchit stock_quantity
+    } catch {
+        addError.value = 'Ce produit n\'est plus disponible.';
+        return;
+    }
 
-  cart.addItem(product.value, quantity.value);
-  added.value = true;
+    if (product.value.stock_quantity <= 0) {
+        addError.value = 'Ce produit est en rupture de stock.';
+        return;
+    }
 
-  clearTimeout(addedTimeout);
+    const refused = cart.addItem(product.value, quantity.value);
 
-  addedTimeout = setTimeout(() => {
-    added.value = false;
-  }, 2500);
+    if (refused > 0) {
+        // Feedback : le panier est déjà plein pour ce produit
+        addError.value = `Vous avez déjà ${cart.items.find((i) => i.id === product.value.id)?.quantity ?? 0} "${product.value.name}" dans votre panier (stock max : ${product.value.stock_quantity}).`;
+        added.value = false;
+    } else {
+        addError.value = null;
+        added.value = true;
+    }
+
+    clearTimeout(addedTimeout);
+    addedTimeout = setTimeout(() => {
+        added.value = false;
+        addError.value = null;
+    }, 3500);
 }
 
 onMounted(async () => {

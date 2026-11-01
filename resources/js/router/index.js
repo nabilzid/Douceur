@@ -12,6 +12,9 @@ const routes = [
     { path: '/connexion', name: 'login', component: () => import('../pages/LoginPage.vue') },
     { path: '/inscription', name: 'register', component: () => import('../pages/RegisterPage.vue') },
 
+    // ✅ NOUVEAU : page de vérification email
+    { path: '/verifier-email', name: 'verify-email', component: () => import('../pages/VerifierEmailPage.vue') },
+
     { path: '/mon-compte', name: 'account', component: () => import('../pages/AccountPage.vue'), meta: { requiresAuth: true } },
     { path: '/mes-commandes', name: 'my-orders', component: () => import('../pages/MyOrdersPage.vue'), meta: { requiresAuth: true } },
     { path: '/mes-demandes', name: 'my-custom-orders', component: () => import('../pages/MyCustomOrdersPage.vue'), meta: { requiresAuth: true } },
@@ -22,8 +25,6 @@ const routes = [
     // ✅ Suivi de commande standard
     { path: '/suivi-commande', name: 'track-order', component: () => import('../pages/TrackOrderPage.vue') },
 
-    // ✅ Lien signé email commande standard : /commande/CMD-xxx?expires=&signature=
-    // Utilise le même composant que /suivi-commande, qui lit le :reference
     {
         path: '/commande/:reference',
         name: 'track-order-signed',
@@ -33,8 +34,6 @@ const routes = [
     // ✅ Suivi de demande sur mesure
     { path: '/suivi-demande', name: 'track-custom-order', component: () => import('../pages/TrackCustomOrderPage.vue') },
 
-    // ✅ Lien signé email demande sur mesure : /demande/SUR-xxx?expires=&signature=
-    // Utilise le même composant que /suivi-demande, qui lit le :reference
     {
         path: '/demande/:reference',
         name: 'track-custom-order-signed',
@@ -73,14 +72,30 @@ router.beforeEach(async (to) => {
     const auth = useAuthStore();
     if (!auth.user) await auth.fetchUser();
 
+    // ✅ Garde email vérifié : bloque tout sauf pages publiques + /verifier-email
+    const publicPaths = ['/connexion', '/inscription', '/verifier-email'];
+    const isPublic = publicPaths.includes(to.path);
+
+    if (auth.isAuthenticated && auth.user && !auth.user.email_verified_at && !isPublic) {
+        return { name: 'verify-email' };
+    }
+
+    // ✅ Si déjà vérifié et tente d'aller sur /verifier-email → /mon-compte
+    if (auth.isAuthenticated && auth.user?.email_verified_at && to.name === 'verify-email') {
+        return { name: 'account' };
+    }
+
+    // Guard auth standard
     if (to.meta.requiresAuth && !auth.isAuthenticated) {
         return { name: 'login', query: { redirect: to.fullPath } };
     }
 
+    // Guard merchant
     if (to.meta.requiresMerchant && !['merchant', 'admin'].includes(auth.user?.role)) {
         return { name: 'home' };
     }
 
+    // Guard admin
     if (to.meta.requiresAdmin && auth.user?.role !== 'admin') {
         return { name: 'admin-dashboard' };
     }

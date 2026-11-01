@@ -30,8 +30,14 @@ export const useCartStore = defineStore('cart', () => {
 
     const total = computed(() => subtotal.value + deliveryFee.value);
 
+    // ✅ Détecte si un article dépasse le stock connu
+    const hasStockIssue = computed(() =>
+        items.value.some((i) => i.quantity > (i.stock_quantity ?? 0))
+    );
+
     const canCheckout = computed(() => {
         if (items.value.length === 0) return false;
+        if (hasStockIssue.value) return false;
         if (isDelivery.value && !isDeliveryAvailable.value) return false;
         return true;
     });
@@ -47,24 +53,44 @@ export const useCartStore = defineStore('cart', () => {
         return Math.max(0, settings.delivery.free_threshold - subtotal.value);
     });
 
-
-
+    /**
+     * Ajoute un produit en plafonnant au stock disponible.
+     * @returns {number} 0 = ajout complet, 1+ = quantité plafonnée (info à afficher)
+     */
     function addItem(product, quantity = 1) {
         const existing = items.value.find((i) => i.id === product.id);
+        const maxStock = Number(product.stock_quantity ?? 0);
+
+        if (maxStock <= 0) return quantity; // tout refusé
+
         if (existing) {
-            existing.quantity += quantity;
-        } else {
-            items.value.push({
-                id: product.id,
-                name: product.name,
-                slug: product.slug,
-                price: parseFloat(product.price),
-                image: product.image_path,
-                type: product.type,
-                stock_quantity: product.stock_quantity,
-                quantity,
-            });
+            const current = existing.quantity;
+            const desired = current + quantity;
+
+            if (desired > maxStock) {
+                existing.quantity = maxStock;
+                existing.stock_quantity = maxStock;
+                // Retourne combien d'unités ont été refusées
+                return desired - maxStock;
+            }
+
+            existing.quantity = desired;
+            existing.stock_quantity = maxStock;
+            return 0;
         }
+
+        const accepted = Math.min(quantity, maxStock);
+        items.value.push({
+            id: product.id,
+            name: product.name,
+            slug: product.slug,
+            price: parseFloat(product.price),
+            image: product.image_path,
+            type: product.type,
+            stock_quantity: maxStock,
+            quantity: accepted,
+        });
+        return quantity - accepted;
     }
 
     function removeItem(productId) {
@@ -74,11 +100,61 @@ export const useCartStore = defineStore('cart', () => {
     function updateQuantity(productId, quantity) {
         const item = items.value.find((i) => i.id === productId);
         if (!item) return;
+
         if (quantity <= 0) {
             removeItem(productId);
-        } else {
-            item.quantity = Math.min(quantity, item.stock_quantity);
+            return;
         }
+
+        item.quantity = Math.min(quantity, item.stock_quantity ?? 1);
+    }
+
+    /**
+     * Recharge le stock réel depuis l'API et ajuste le panier.
+     * CORRIGÉ : utilise un snapshot pour éviter le bug d'index après removeItem().
+     * @returns {Promise<Array<{name, type, newQty?}>>} changements pour afficher un message
+     */
+    async function syncStock() {
+        if (items.value.length === 0) return [];
+
+        // ✅ Snapshot AVANT toute mutation
+        const snapshot = items.value.map((i) => ({ id: i.id, slug: i.slug, name: i.name }));
+
+        const results = await Promise.allSettled(
+            snapshot.map((i) => axios.get(`/api/products/${i.slug}`))
+        );
+
+        const changes = [];
+
+        results.forEach((result, index) => {
+            const original = snapshot[index];
+            const item = items.value.find((i) => i.id === original.id);
+            if (!item) return; // déjà retiré
+
+            if (result.status === 'rejected') {
+                removeItem(item.id);
+                changes.push({ name: original.name, type: 'removed' });
+                return;
+            }
+
+            const realStock = Number(result.value.data.stock_quantity ?? 0);
+
+            if (realStock === 0) {
+                removeItem(item.id);
+                changes.push({ name: original.name, type: 'out_of_stock' });
+                return;
+            }
+
+            if (item.quantity > realStock) {
+                item.quantity = realStock;
+                item.stock_quantity = realStock;
+                changes.push({ name: original.name, type: 'reduced', newQty: realStock });
+            } else {
+                item.stock_quantity = realStock;
+            }
+        });
+
+        return changes;
     }
 
     function setDeliveryType(type) {
@@ -108,17 +184,16 @@ export const useCartStore = defineStore('cart', () => {
         };
 
         const { data } = await axios.post('/api/orders', payload);
-
         return data.order;
     }
 
     return {
         items, deliveryType,
         itemCount, subtotal, deliveryFee, total,
-        isDelivery, isDeliveryAvailable, canCheckout,
+        isDelivery, isDeliveryAvailable, canCheckout, hasStockIssue,
         missingForDelivery, missingForFreeDelivery,
         addItem, removeItem, updateQuantity, setDeliveryType, clear,
-        submitOrder,
+        syncStock, submitOrder,
     };
 }, {
     persist: true,

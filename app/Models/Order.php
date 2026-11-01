@@ -17,6 +17,7 @@ class Order extends Model
         'customer_phone', 'delivery_type', 'delivery_address', 'delivery_city',
         'delivery_postal_code', 'subtotal', 'delivery_fee', 'discount_amount',
         'total_amount', 'status', 'payment_status', 'notes',
+        'invoice_number', 'invoice_path', 'invoiced_at',
     ];
 
     protected $casts = [
@@ -24,6 +25,7 @@ class Order extends Model
         'delivery_fee' => 'decimal:2',
         'discount_amount' => 'decimal:2',
         'total_amount' => 'decimal:2',
+        'invoiced_at' => 'datetime',
     ];
 
     public function user(): BelongsTo

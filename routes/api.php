@@ -119,4 +119,6 @@ Route::put('/custom-orders/{reference}/respond-guest', [CustomOrderController::c
 
 Route::get('/custom-orders/{reference}/invoice/{type}', [CustomOrderController::class, 'downloadInvoice'])
     ->name('custom-orders.invoice');
-    
+
+Route::get('/orders/{reference}/invoice', [OrderController::class, 'downloadInvoice'])
+    ->name('orders.invoice');

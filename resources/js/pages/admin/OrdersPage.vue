@@ -439,27 +439,53 @@
               </div>
             </section>
 
-            <!-- Actions -->
+            <!-- Actions : changement de statut avec transitions assouplies -->
             <section>
               <h3 class="mb-3 font-semibold text-chocolate">Changer le statut</h3>
-              <div class="rounded-2xl border border-cream-dark bg-white p-4">
+
+              <!-- Cas normal : select filtré -->
+              <div
+                v-if="!isTerminalStatus"
+                class="rounded-2xl border border-cream-dark bg-white p-4"
+              >
                 <select
                   :value="activeOrder.status"
                   @change="updateStatus(activeOrder, $event.target.value)"
                   :disabled="savingAction"
                   class="w-full rounded-xl border border-cream-dark bg-cream px-3 py-3 text-sm font-medium text-chocolate outline-none focus:border-caramel focus:ring-2 focus:ring-caramel/20 disabled:opacity-60"
                 >
-                  <option value="pending">En attente</option>
-                  <option value="confirmed">Confirmée</option>
-                  <option value="preparing">En préparation</option>
-                  <option value="ready">Prête</option>
-                  <option value="delivering">En livraison</option>
-                  <option value="delivered">Livrée</option>
-                  <option value="cancelled">Annulée</option>
+                  <!-- Statut actuel (affiché mais non sélectionnable) -->
+                  <option :value="activeOrder.status" disabled>
+                    {{ allStatusOptions.find(o => o.value === activeOrder.status)?.label }}
+                  </option>
+
+                  <!-- Transitions autorisées -->
+                  <option
+                    v-for="opt in availableStatuses"
+                    :key="opt.value"
+                    :value="opt.value"
+                  >
+                    {{ opt.label }}
+                  </option>
                 </select>
                 <p class="mt-2 text-xs text-muted">
-                  Le changement de statut est immédiat et notifie le client.
+                  Vous pouvez passer à n'importe quel statut suivant. Les états <strong>Livrée</strong> et <strong>Annulée</strong> sont définitifs.
                 </p>
+              </div>
+
+              <!-- Cas terminal : message à la place du select -->
+              <div
+                v-else
+                class="rounded-2xl border border-cream-dark bg-white p-4 text-sm"
+              >
+                <template v-if="activeOrder.status === 'delivered'">
+                  <p class="font-semibold text-emerald-700">✅ Commande livrée.</p>
+                  <p class="mt-1 text-muted">Plus aucune modification n'est possible.</p>
+                </template>
+                <template v-else-if="activeOrder.status === 'cancelled'">
+                  <p class="font-semibold text-rose-700">❌ Commande annulée.</p>
+                  <p class="mt-1 text-muted">Plus aucune modification n'est possible.</p>
+                </template>
               </div>
             </section>
           </div>
@@ -491,6 +517,46 @@ const actionMessage = ref('')
 const actionError = ref('')
 
 let refreshInterval = null
+
+/* ═══════════════════════════════════════════════════════════
+   LOGIQUE DE TRANSITION ASSOUPLIE
+   ═══════════════════════════════════════════════════════════ */
+
+const orderFlow = ['pending', 'confirmed', 'preparing', 'ready', 'delivering', 'delivered']
+
+const allStatusOptions = [
+  { value: 'pending',    label: 'En attente' },
+  { value: 'confirmed',  label: 'Confirmée' },
+  { value: 'preparing',  label: 'En préparation' },
+  { value: 'ready',      label: 'Prête' },
+  { value: 'delivering', label: 'En livraison' },
+  { value: 'delivered',  label: 'Livrée' },
+  { value: 'cancelled',  label: 'Annulée' },
+]
+
+const availableStatuses = computed(() => {
+  if (!activeOrder.value) return []
+  const current = activeOrder.value.status
+
+  if (['delivered', 'cancelled'].includes(current)) return []
+
+  const currentIndex = orderFlow.indexOf(current)
+  if (currentIndex === -1) return []
+
+  const forward = orderFlow
+    .slice(currentIndex + 1)
+    .map(value => allStatusOptions.find(o => o.value === value))
+
+  const cancel = allStatusOptions.find(o => o.value === 'cancelled')
+
+  return [...forward, cancel].filter(Boolean)
+})
+
+const isTerminalStatus = computed(() =>
+  ['delivered', 'cancelled'].includes(activeOrder.value?.status)
+)
+
+/* ═══════════════════════════════════════════════════════════ */
 
 const stats = computed(() => [
   {
@@ -671,6 +737,11 @@ function statusClasses(status) {
 async function updateStatus(order, status) {
   if (savingAction.value || order.status === status) return
 
+  if (!availableStatuses.value.some(opt => opt.value === status)) {
+    actionError.value = `Transition non autorisée : ${statusLabel(order.status)} → ${statusLabel(status)}.`
+    return
+  }
+
   savingAction.value = true
   actionError.value = ''
   actionMessage.value = ''
@@ -690,6 +761,11 @@ function handleKeydown(event) {
   if (event.key === 'Escape' && panelOpen.value) closePanel()
 }
 
+/* ✅ NOUVEAU : rechargement instantané via Reverb */
+function handleNewOrder() {
+  loadOrders({ silent: true })
+}
+
 watch(panelOpen, isOpen => {
   document.body.style.overflow = isOpen ? 'hidden' : ''
 })
@@ -700,11 +776,18 @@ onMounted(() => {
     if (!savingAction.value) loadOrders({ silent: true })
   }, 30_000)
   window.addEventListener('keydown', handleKeydown)
+
+  // ✅ NOUVEAU : écouter l'événement global de nouvelle commande
+  window.addEventListener('new-order-received', handleNewOrder)
 })
 
 onUnmounted(() => {
   if (refreshInterval) clearInterval(refreshInterval)
   window.removeEventListener('keydown', handleKeydown)
+
+  // ✅ NOUVEAU : nettoyer l'écouteur
+  window.removeEventListener('new-order-received', handleNewOrder)
+
   document.body.style.overflow = ''
 })
 </script>

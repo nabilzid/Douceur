@@ -1,4 +1,3 @@
-
 <!-- Page mon compte client -->
 <template>
   <div class="max-w-6xl mx-auto">
@@ -18,7 +17,35 @@
       </p>
     </header>
 
-
+    <!-- ✅ Bandeau : email non vérifié -->
+    <div
+      v-if="auth.isAuthenticated && !auth.user?.email_verified_at"
+      class="mb-6 rounded-2xl border border-amber-200 bg-amber-50 p-4 sm:p-5"
+      role="alert"
+    >
+      <div class="flex items-start gap-3">
+        <span class="text-2xl shrink-0" aria-hidden="true">⚠️</span>
+        <div class="flex-1 min-w-0">
+          <p class="font-semibold text-amber-900">
+            Votre adresse email n'est pas vérifiée
+          </p>
+          <p class="mt-1 text-sm text-amber-800 leading-6">
+            Vérifiez votre boîte mail et cliquez sur le lien de confirmation.
+            Sans vérification, vous ne pourrez pas passer commande.
+          </p>
+          <button
+            type="button"
+            class="mt-3 inline-flex items-center gap-2 rounded-full bg-amber-600 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-700 disabled:opacity-60 transition"
+            :disabled="resendingVerification"
+            @click="resendVerification"
+          >
+            {{ resendingVerification ? 'Envoi…' : 'Renvoyer le mail' }}
+          </button>
+          <p v-if="resendMessage" class="mt-2 text-sm text-emerald-700">{{ resendMessage }}</p>
+          <p v-if="resendError" class="mt-2 text-sm text-raspberry">{{ resendError }}</p>
+        </div>
+      </div>
+    </div>
 
     <!-- Non connecté -->
     <div v-if="!auth.isAuthenticated" class="max-w-md mx-auto text-center py-16 px-4 bg-white rounded-2xl shadow-soft">
@@ -256,7 +283,6 @@
               ? 'bg-caramel/5 border-caramel'
               : 'bg-cream border-transparent'"
           >
-            <!-- Header adresse -->
             <div class="flex items-start justify-between gap-3 mb-2">
               <div class="flex items-center gap-2 flex-wrap min-w-0">
                 <span class="text-base shrink-0">{{ addr.label ? '🏠' : '📍' }}</span>
@@ -301,7 +327,6 @@
           </li>
         </ul>
 
-        <!-- Info fallback -->
         <div
           v-if="addresses.length > 0 && !hasDefault"
           class="mt-4 p-3 rounded-xl bg-caramel/8 text-caramel-dark text-xs leading-relaxed"
@@ -319,6 +344,33 @@ import axios from 'axios';
 import { useAuthStore } from '../stores/auth';
 
 const auth = useAuthStore();
+
+/* ─────────────────────────────────────────────────────────────
+   Vérification email
+   ───────────────────────────────────────────────────────────── */
+
+const resendingVerification = ref(false);
+const resendMessage = ref('');
+const resendError = ref('');
+
+async function resendVerification() {
+    resendingVerification.value = true;
+    resendMessage.value = '';
+    resendError.value = '';
+
+    try {
+        const { data } = await axios.post('/api/email/verification-notification');
+        resendMessage.value = data.message || 'Un email de vérification a été envoyé.';
+    } catch (e) {
+        resendError.value = e.response?.data?.message || 'Impossible d\'envoyer le mail.';
+    } finally {
+        resendingVerification.value = false;
+    }
+}
+
+/* ─────────────────────────────────────────────────────────────
+   État existant (inchangé)
+   ───────────────────────────────────────────────────────────── */
 
 const profile = reactive({ name: '', email: '', phone: '' });
 const savingProfile = ref(false);
@@ -343,7 +395,8 @@ const addressForm = reactive({
 
 const hasDefault = computed(() => addresses.value.some((a) => a.is_default));
 
-// --- Autocomplétion d'adresse ---
+/* Autocomplétion (inchangé) */
+
 const suggestions = ref([]);
 const showSuggestions = ref(false);
 let debounceTimer = null;
@@ -391,7 +444,8 @@ function selectSuggestion(s) {
     showSuggestions.value = false;
 }
 
-// --- Chargement / sauvegarde ---
+/* Chargement / sauvegarde (inchangé) */
+
 async function loadProfile() {
     if (auth.user) {
         profile.name = auth.user.name;

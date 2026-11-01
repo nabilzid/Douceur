@@ -9,17 +9,58 @@ use Illuminate\Http\Request;
 
 class AdminController extends Controller
 {
-    public function dashboard()
-    {
-        return response()->json([
-            'total_users' => User::count(),
-            'total_merchants' => User::where('role', 'merchant')->count(),
-            'total_customers' => User::where('role', 'customer')->count(),
-            'total_orders' => \App\Models\Order::count(),
-            'total_revenue' => \App\Models\Order::where('payment_status', 'paid')->sum('total_amount'),
-            'pending_orders' => \App\Models\Order::where('status', 'pending')->count(),
-        ]);
-    }
+    public function dashboard(Request $request)
+{
+    $data = [];
+
+    // ✅ Utilisateurs
+    $data['total_users'] = \App\Models\User::count();
+    $data['total_customers'] = \App\Models\User::where('role', 'customer')->count();
+    $data['total_merchants'] = \App\Models\User::where('role', 'merchant')->count();
+
+    // ✅ Commandes standard
+    $data['total_orders'] = \App\Models\Order::count();
+    $data['pending_orders'] = \App\Models\Order::where('status', 'pending')->count();
+    $data['orders_revenue'] = \App\Models\Order::where('payment_status', 'paid')->sum('total_amount');
+
+    // ✅ Sur-mesure
+    $customOrders = \App\Models\CustomOrder::query();
+
+    $data['custom_orders'] = [
+        'total' => (clone $customOrders)->count(),
+        'pending_quote' => (clone $customOrders)->where('status', 'pending_quote')->count(),
+        'quoted' => (clone $customOrders)->where('status', 'quoted')->count(),
+        'accepted' => (clone $customOrders)->where('status', 'accepted')->count(),
+        'completed' => (clone $customOrders)->where('status', 'completed')->count(),
+    ];
+
+    // ✅ CA sur-mesure (encaissé)
+    $data['custom_revenue'] = (clone $customOrders)
+        ->whereIn('status', ['accepted', 'completed'])
+        ->sum('amount_paid');
+
+    // ✅ CA total = standard + sur-mesure
+    $data['total_revenue'] = $data['orders_revenue'] + $data['custom_revenue'];
+
+    // ✅ À recouvrer (soldes dus)
+    $data['pending_payments'] = (clone $customOrders)
+        ->where('status', 'accepted')
+        ->whereRaw('quoted_price > amount_paid')
+        ->selectRaw('COALESCE(SUM(quoted_price - amount_paid), 0) as total')
+        ->value('total');
+
+    $data['pending_payments_count'] = (clone $customOrders)
+        ->where('status', 'accepted')
+        ->whereRaw('quoted_price > amount_paid')
+        ->count();
+
+    // ✅ Trésorerie encaissée aujourd'hui
+    $data['cash_today'] = (clone $customOrders)
+        ->whereDate('balance_paid_at', today())
+        ->sum('amount_paid');
+
+    return response()->json($data);
+}
 
     public function settings()
     {
@@ -214,6 +255,7 @@ class AdminController extends Controller
 
     public function updateCustomOrderStatus(Request $request, \App\Models\CustomOrder $customOrder)
     {
+        dd('rrr');
         $validated = $request->validate([
             'status' => 'required|in:completed,cancelled',
         ]);

@@ -118,7 +118,7 @@
                                 Votre demande personnalisée
                             </p>
 
-                            <h1 class="font-display text-2xl font-bold sm:text-3xl">
+                            <h1 class="font-display text-2xl font-bold text-white sm:text-3xl">
                                 {{ order.reference }}
                             </h1>
 

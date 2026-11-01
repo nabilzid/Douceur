@@ -9,8 +9,9 @@ use Illuminate\Http\Request;
 use Stripe\Stripe;
 use Stripe\Checkout\Session;
 use Stripe\Webhook;
+use App\Events\AdminNotificationCreated;
 use Illuminate\Support\Facades\Notification;
-
+use Illuminate\Support\Facades\DB;
 class PaymentController extends Controller
 {
     public function checkout(Request $request, string $reference)
@@ -91,86 +92,123 @@ class PaymentController extends Controller
             return response()->json(['error' => 'Invalid signature'], 400);
         }
 
-        if ($event->type === 'checkout.session.completed') {
-            $session = $event->data->object;
+        if ($event->type !== 'checkout.session.completed') {
+            return response()->json(['received' => true]);
+        }
 
-            // ✅ CAS 1 : Paiement d'un acompte ou de la totalité d'un devis sur mesure
-            if (isset($session->metadata->custom_order_id) && $session->payment_status === 'paid') {
-                $customOrder = \App\Models\CustomOrder::find($session->metadata->custom_order_id);
+        $session = $event->data->object;
 
-                // Garde d'idempotence : on ne traite que si la commande est encore en attente de décision
-                if ($customOrder && $customOrder->status === 'quoted') {
-                    $amountPaid = $session->amount_total / 100;
-                    $percentage = (int) ($session->metadata->payment_percentage ?? 0);
+        try {
+            DB::transaction(function () use ($session) {
 
-                    $customOrder->update([
-                        // ✅ 100 % → "completed", sinon "deposit_paid"
-                        'status' => 'accepted',
-                        'amount_paid' => $customOrder->amount_paid + $amountPaid,
-                        'payment_percentage' => $percentage,
-                    ]);
+                // ============================================================
+                // CAS 1 : Paiement d'un devis sur mesure (acompte ou totalité)
+                // ============================================================
+                if (isset($session->metadata->custom_order_id) && $session->payment_status === 'paid') {
 
-                    // ✅ Facture adaptée selon le type de paiement
-                    $invoiceService = new \App\Services\InvoicePdfService(new \App\Services\InvoiceNumberService());
+                    $customOrder = \App\Models\CustomOrder::where('id', $session->metadata->custom_order_id)
+                        ->lockForUpdate()
+                        ->first();
 
-                    if ($percentage < 100) {
-                        // Acompte partiel (20 % ou 50 %)
-                        $path = $invoiceService->generateDeposit($customOrder, $amountPaid);
-                        $customOrder->update(['deposit_invoice_path' => $path]);
-                    } else {
-                        // Paiement intégral (100 %) : facture de solde directement
-                        $path = $invoiceService->generateBalance($customOrder, $amountPaid);
-                        $customOrder->update(['balance_invoice_path' => $path]);
-                    }
+                    if ($customOrder && $customOrder->status === 'quoted') {
+                        $amountPaid = $session->amount_total / 100;
+                        $percentage = (int) ($session->metadata->payment_percentage ?? 0);
 
-                    // Notifier le pâtissier + les admins
-                    $recipients = collect([\App\Models\Merchant::find($customOrder->merchant_id)?->user])
-                        ->merge(\App\Models\User::where('role', 'admin')->get())
-                        ->filter()
-                        ->unique('id');
-
-                    $recipients->each(fn ($recipient) => $recipient->notify(
-                        new \App\Notifications\CustomOrderResponded($customOrder)
-                    ));
-                }
-
-                return response()->json(['received' => true]);
-            }
-
-            // ✅ CAS 2 : Paiement d'une commande standard (existant)
-            $orderId = $session->metadata->order_id ?? null;
-
-            if ($orderId) {
-                $order = Order::find($orderId);
-                if ($order && $order->payment_status === 'pending') {
-                    $order->update([
-                        'payment_status' => 'paid',
-                        'status' => 'confirmed',
-                    ]);
-
-                    Payment::where('order_id', $order->id)
-                        ->where('provider_reference', $session->id)
-                        ->update([
-                            'status' => 'succeeded',
-                            'paid_at' => now(),
+                        $customOrder->update([
+                            'status' => 'accepted',
+                            'amount_paid' => $customOrder->amount_paid + $amountPaid,
+                            'payment_percentage' => $percentage,
                         ]);
 
-                    // Notifier le client
-                    Notification::route('mail', $order->customer_email)
-                        ->notify(new \App\Notifications\OrderConfirmation($order));
+                        $invoiceService = new \App\Services\InvoicePdfService(new \App\Services\InvoiceNumberService());
 
-                    // Notifier le pâtissier
-                    $merchant = \App\Models\Merchant::find($order->merchant_id);
-                    if ($merchant && $merchant->user) {
-                        $merchant->user->notify(new \App\Notifications\NewOrderReceived($order));
+                        if ($percentage < 100) {
+                            $path = $invoiceService->generateDeposit($customOrder, $amountPaid);
+                            $customOrder->update(['deposit_invoice_path' => $path]);
+                        } else {
+                            $path = $invoiceService->generateBalance($customOrder, $amountPaid);
+                            $customOrder->update(['balance_invoice_path' => $path]);
+                        }
+
+                        $recipients = collect([\App\Models\Merchant::find($customOrder->merchant_id)?->user])
+                            ->merge(\App\Models\User::where('role', 'admin')->get())
+                            ->filter()
+                            ->unique('id');
+
+                        $recipients->each(fn ($recipient) => $recipient->notify(
+                            new \App\Notifications\CustomOrderResponded($customOrder)
+                        ));
+
+                        // ✅ NOUVEAU : Reverb broadcast
+                        AdminNotificationCreated::dispatch([
+                            'type' => 'custom_order_paid',
+                            'title' => "Devis {$customOrder->reference} payé",
+                            'message' => "{$customOrder->customer_name} — " . number_format($amountPaid, 2, ',', ' ') . ' €',
+                            'url' => '/admin/sur-mesure',
+                            'icon' => '💳',
+                        ]);
                     }
 
-                    // Notifier les admins
-                    \App\Models\User::where('role', 'admin')->get()->each(
-                        fn ($admin) => $admin->notify(new \App\Notifications\NewOrderReceived($order))
-                    );
+                    return;
                 }
-            }
+
+                // ============================================================
+                // CAS 2 : Paiement d'une commande standard
+                // ============================================================
+                $orderId = $session->metadata->order_id ?? null;
+
+                if (! $orderId) {
+                    return;
+                }
+
+                $order = Order::where('id', $orderId)->lockForUpdate()->first();
+
+                if (! $order || $order->payment_status !== 'pending') {
+                    return;
+                }
+
+                $order->update([
+                    'payment_status' => 'paid',
+                    'status' => 'confirmed',
+                ]);
+
+                Payment::where('order_id', $order->id)
+                    ->where('provider_reference', $session->id)
+                    ->update([
+                        'status' => 'succeeded',
+                        'paid_at' => now(),
+                    ]);
+
+                Notification::route('mail', $order->customer_email)
+                    ->notify(new \App\Notifications\OrderConfirmation($order));
+
+                $merchant = \App\Models\Merchant::find($order->merchant_id);
+                if ($merchant && $merchant->user) {
+                    $merchant->user->notify(new \App\Notifications\NewOrderReceived($order));
+                }
+
+                \App\Models\User::where('role', 'admin')->get()->each(
+                    fn ($admin) => $admin->notify(new \App\Notifications\NewOrderReceived($order))
+                );
+
+                // ✅ NOUVEAU : Reverb broadcast
+                AdminNotificationCreated::dispatch([
+                    'type' => 'new_order',
+                    'title' => "Nouvelle commande {$order->reference}",
+                    'message' => "{$order->customer_name} — " . number_format($order->total_amount, 2, ',', ' ') . ' €',
+                    'url' => '/admin/commandes',
+                    'icon' => '📦',
+                ]);
+            });
+        } catch (\Throwable $e) {
+            \Log::error('Stripe webhook processing failed', [
+                'event_id' => $event->id ?? null,
+                'type' => $event->type ?? null,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return response()->json(['received' => true, 'error' => 'processing_failed'], 200);
         }
 
         return response()->json(['received' => true]);

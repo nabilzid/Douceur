@@ -340,7 +340,7 @@ async function submit() {
 
     try {
         await auth.register({ ...form });
-        await router.push('/');
+        await router.push('/verifier-email');
     } catch (e) {
         const errors = e.response?.data?.errors;
 

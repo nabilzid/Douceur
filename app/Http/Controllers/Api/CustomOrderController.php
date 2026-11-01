@@ -15,7 +15,7 @@ use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Str;
 use Stripe\Checkout\Session;
 use Stripe\Stripe;
-
+use App\Events\AdminNotificationCreated;
 class CustomOrderController extends Controller
 {
     public function store(Request $request)
@@ -74,12 +74,39 @@ class CustomOrderController extends Controller
             'status' => 'pending_quote',
         ]);
 
+        // ✅ 1. Notifier les admins et le pâtissier
         $recipients = collect([\App\Models\Merchant::find($order->merchant_id)?->user])
             ->merge(\App\Models\User::where('role', 'admin')->get())
             ->filter()
             ->unique('id');
 
         $recipients->each(fn ($recipient) => $recipient->notify(new CustomOrderReceived($order)));
+
+        // ✅ 2. NOUVEAU — Notifier le CLIENT (connecté ou invité)
+        try {
+            $clientNotification = new \App\Notifications\CustomOrderConfirmation($order);
+
+            if ($order->user) {
+                $order->user->notify($clientNotification);
+            } elseif ($order->customer_email) {
+                \Illuminate\Support\Facades\Notification::route('mail', $order->customer_email)
+                    ->notify($clientNotification);
+            }
+        } catch (\Throwable $e) {
+            \Log::warning('CustomOrderConfirmation mail failed', [
+                'reference' => $order->reference,
+                'error' => $e->getMessage(),
+            ]);
+        }
+
+        // ✅ 3. Reverb broadcast (admin)
+        AdminNotificationCreated::dispatch([
+            'type' => 'new_custom_order',
+            'title' => "Nouvelle demande {$order->reference}",
+            'message' => "{$customerName} — {$order->eventLabel()}",
+            'url' => '/admin/sur-mesure',
+            'icon' => '🎂',
+        ]);
 
         return response()->json([
             'custom_order' => $order,

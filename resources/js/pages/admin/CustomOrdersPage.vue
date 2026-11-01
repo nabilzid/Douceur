@@ -2,7 +2,8 @@
 <template>
   <div class="min-h-screen bg-cream px-4 py-6 sm:px-6 lg:px-8">
     <div class="mx-auto max-w-[1600px] space-y-6">
-      <!-- En-tête -->
+
+      <!-- ═══ HEADER ═══ -->
       <header class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 class="font-display text-3xl font-bold text-chocolate sm:text-4xl">
@@ -37,23 +38,19 @@
         </button>
       </header>
 
-      <!-- Erreur de chargement -->
+      <!-- ═══ ERREUR ═══ -->
       <div
         v-if="loadError"
         class="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
         role="alert"
       >
         {{ loadError }}
-        <button
-          type="button"
-          class="ml-2 font-semibold underline"
-          @click="loadOrders()"
-        >
+        <button type="button" class="ml-2 font-semibold underline" @click="loadOrders()">
           Réessayer
         </button>
       </div>
 
-      <!-- Indicateurs -->
+      <!-- ═══ STATS ═══ -->
       <section class="grid grid-cols-2 gap-3 lg:grid-cols-5">
         <button
           v-for="stat in stats"
@@ -66,14 +63,12 @@
           @click="selectStat(stat.key)"
         >
           <span class="block text-sm text-muted">{{ stat.title }}</span>
-          <span class="mt-2 block text-2xl font-bold text-chocolate">
-            {{ stat.value }}
-          </span>
+          <span class="mt-2 block text-2xl font-bold text-chocolate">{{ stat.value }}</span>
           <span class="mt-1 block text-xs text-muted">{{ stat.subtitle }}</span>
         </button>
       </section>
 
-      <!-- Filtres -->
+      <!-- ═══ FILTRES ═══ -->
       <section class="rounded-2xl border border-cream-dark bg-white p-4 shadow-sm sm:p-5">
         <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-[minmax(220px,1.5fr)_minmax(180px,1fr)_minmax(220px,1fr)_auto]">
           <label class="block">
@@ -113,7 +108,6 @@
               <option value="pending_quote">À traiter</option>
               <option value="quoted">Devis envoyé</option>
               <option value="accepted">Acceptée</option>
-              <option value="deposit_paid">Acompte réglé</option>
               <option value="completed">Terminée</option>
               <option value="rejected">Refusée par le client</option>
               <option value="refused_by_merchant">Refusée par le pâtissier</option>
@@ -148,7 +142,7 @@
         </div>
       </section>
 
-      <!-- Tableau -->
+      <!-- ═══ TABLEAU ═══ -->
       <section class="overflow-hidden rounded-2xl border border-cream-dark bg-white shadow-card">
         <div class="flex flex-col gap-1 border-b border-cream-dark px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
           <div>
@@ -165,34 +159,18 @@
         </div>
 
         <div v-if="loading && !orders.length" class="space-y-3 p-5">
-          <div
-            v-for="n in 5"
-            :key="n"
-            class="h-16 animate-pulse rounded-xl bg-cream"
-          />
+          <div v-for="n in 5" :key="n" class="h-16 animate-pulse rounded-xl bg-cream" />
         </div>
 
-        <div
-          v-else-if="!filteredOrders.length"
-          class="px-6 py-16 text-center"
-        >
+        <div v-else-if="!filteredOrders.length" class="px-6 py-16 text-center">
           <div class="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-cream text-caramel-dark">
-            <svg
-              class="h-6 w-6"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="1.7"
-              aria-hidden="true"
-            >
+            <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true">
               <circle cx="11" cy="11" r="7" />
               <path d="m20 20-4-4" />
             </svg>
           </div>
           <h3 class="mt-4 font-semibold text-chocolate">Aucune demande trouvée</h3>
-          <p class="mt-1 text-sm text-muted">
-            Modifie les filtres ou lance une nouvelle recherche.
-          </p>
+          <p class="mt-1 text-sm text-muted">Modifie les filtres ou lance une nouvelle recherche.</p>
           <button
             type="button"
             class="mt-4 text-sm font-semibold text-caramel-dark underline"
@@ -203,24 +181,16 @@
         </div>
 
         <template v-else>
-          <!-- En-tête du tableau desktop -->
           <div class="hidden grid-cols-[minmax(100px,0.8fr)_minmax(160px,1.25fr)_minmax(130px,1fr)_minmax(130px,0.9fr)_minmax(120px,0.8fr)_minmax(150px,1fr)_32px] gap-4 border-b border-cream-dark bg-cream/50 px-5 py-3 text-xs font-semibold uppercase tracking-wide text-muted xl:grid">
-            <button type="button" class="text-left hover:text-chocolate" @click="setSort('reference')">
-              Référence
-            </button>
-            <button type="button" class="text-left hover:text-chocolate" @click="setSort('customer')">
-              Client
-            </button>
-            <button type="button" class="text-left hover:text-chocolate" @click="setSort('event')">
-              Événement
-            </button>
+            <span>Référence</span>
+            <span>Client</span>
+            <span>Événement</span>
             <span>Montant</span>
             <span>Devis proposé</span>
             <span>Statut</span>
             <span aria-hidden="true"></span>
           </div>
 
-          <!-- Lignes avec espacement mobile -->
           <div class="divide-y divide-cream-dark/80">
             <button
               v-for="order in filteredOrders"
@@ -230,88 +200,57 @@
               :aria-label="`Ouvrir la demande ${order.reference || order.id}`"
               @click="openPanel(order)"
             >
-              <!-- Présentation mobile -->
+              <!-- Mobile -->
               <div class="flex items-start justify-between gap-3 xl:hidden">
                 <div class="min-w-0">
-                  <p class="font-semibold text-chocolate">
-                    {{ order.reference || `CMD-${order.id}` }}
-                  </p>
-                  <p class="mt-1 truncate text-sm text-chocolate">
-                    {{ order.customer_name || 'Client non renseigné' }}
-                  </p>
+                  <p class="font-semibold text-chocolate">{{ order.reference || `CMD-${order.id}` }}</p>
+                  <p class="mt-1 truncate text-sm text-chocolate">{{ order.customer_name || 'Client non renseigné' }}</p>
                   <p class="mt-1 text-xs text-muted">
-                    {{ eventLabel(order.event_type) }}
-                    <span aria-hidden="true"> · </span>
-                    {{ formatDate(order.event_date) }}
+                    {{ eventLabel(order.event_type) }} · {{ formatDate(order.event_date) }}
                   </p>
                 </div>
-                <svg
-                  class="mt-1 h-4 w-4 shrink-0 text-muted transition group-hover:translate-x-0.5 group-hover:text-caramel-dark"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  aria-hidden="true"
-                >
+                <svg class="mt-1 h-4 w-4 shrink-0 text-muted transition group-hover:translate-x-0.5 group-hover:text-caramel-dark"
+                     viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                   <path d="m9 18 6-6-6-6" />
                 </svg>
               </div>
 
               <div class="mt-3 flex flex-wrap items-center gap-2 xl:hidden">
-                <span class="text-sm font-semibold text-chocolate">
-                  {{ formatPrice(order.quoted_price ?? order.estimated_budget) }}
-                </span>
-                <span
-                  class="inline-flex rounded-full px-2.5 py-1 text-xs font-semibold"
-                  :class="quoteClasses(order)"
-                >
+                <span class="text-sm font-semibold text-chocolate">{{ formatPrice(order.quoted_price ?? order.estimated_budget) }}</span>
+                <span class="inline-flex rounded-full px-2.5 py-1 text-xs font-semibold" :class="quoteClasses(order)">
                   {{ quoteLabel(order) }}
                 </span>
-                <span
-                  class="inline-flex rounded-full px-2.5 py-1 text-xs font-semibold"
-                  :class="statusClasses(order.status)"
-                >
+                <span class="inline-flex rounded-full px-2.5 py-1 text-xs font-semibold" :class="statusClasses(order.status)">
                   {{ statusLabel(order.status) }}
+                </span>
+                <span v-if="hasBalanceDueFor(order)" class="inline-flex rounded-full bg-amber-100 px-2.5 py-1 text-xs font-semibold text-amber-800">
+                  Solde {{ formatPrice(balanceDueFor(order)) }}
                 </span>
               </div>
 
-              <!-- Colonnes desktop -->
+              <!-- Desktop -->
               <div class="hidden min-w-0 xl:block">
-                <span class="font-semibold text-chocolate">
-                  {{ order.reference || `CMD-${order.id}` }}
-                </span>
-                <span
-                  v-if="order.status === 'pending_quote'"
-                  class="mt-1 block text-xs font-medium text-caramel-dark"
-                >
+                <span class="font-semibold text-chocolate">{{ order.reference || `CMD-${order.id}` }}</span>
+                <span v-if="order.status === 'pending_quote'" class="mt-1 block text-xs font-medium text-caramel-dark">
                   Prioritaire
                 </span>
               </div>
 
               <div class="hidden min-w-0 xl:block">
-                <p class="truncate font-medium text-chocolate">
-                  {{ order.customer_name || 'Client non renseigné' }}
-                </p>
-                <p class="mt-1 truncate text-xs text-muted">
-                  {{ order.customer_email || order.email || 'E-mail non renseigné' }}
-                </p>
+                <p class="truncate font-medium text-chocolate">{{ order.customer_name || 'Client non renseigné' }}</p>
+                <p class="mt-1 truncate text-xs text-muted">{{ order.customer_email || order.email || 'E-mail non renseigné' }}</p>
               </div>
 
               <div class="hidden min-w-0 xl:block">
-                <p class="truncate text-sm font-medium text-chocolate">
-                  {{ eventLabel(order.event_type) }}
-                </p>
-                <p class="mt-1 text-xs text-muted">
-                  {{ formatDate(order.event_date) }}
-                </p>
+                <p class="truncate text-sm font-medium text-chocolate">{{ eventLabel(order.event_type) }}</p>
+                <p class="mt-1 text-xs text-muted">{{ formatDate(order.event_date) }}</p>
               </div>
 
               <div class="hidden xl:block">
-                <p class="font-semibold text-chocolate">
-                  {{ formatPrice(order.quoted_price ?? order.estimated_budget) }}
-                </p>
-                <p v-if="order.amount_paid > 0" class="mt-1 text-xs text-muted">
-                  {{ formatPrice(order.amount_paid) }} payé
+                <p class="font-semibold text-chocolate">{{ formatPrice(order.quoted_price ?? order.estimated_budget) }}</p>
+                <p v-if="order.amount_paid > 0" class="mt-1 text-xs text-muted">{{ formatPrice(order.amount_paid) }} payé</p>
+                <p v-if="hasBalanceDueFor(order)" class="mt-1 text-xs font-semibold text-amber-700">
+                  Solde dû : {{ formatPrice(balanceDueFor(order)) }}
                 </p>
               </div>
 
@@ -323,23 +262,14 @@
               </div>
 
               <div class="hidden xl:block">
-                <span
-                  class="inline-flex max-w-full rounded-full px-2.5 py-1 text-xs font-semibold"
-                  :class="statusClasses(order.status)"
-                >
+                <span class="inline-flex max-w-full rounded-full px-2.5 py-1 text-xs font-semibold" :class="statusClasses(order.status)">
                   {{ statusLabel(order.status) }}
                 </span>
               </div>
 
               <div class="hidden justify-end xl:flex">
-                <svg
-                  class="h-4 w-4 text-muted transition group-hover:translate-x-0.5 group-hover:text-caramel-dark"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  aria-hidden="true"
-                >
+                <svg class="h-4 w-4 text-muted transition group-hover:translate-x-0.5 group-hover:text-caramel-dark"
+                     viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                   <path d="m9 18 6-6-6-6" />
                 </svg>
               </div>
@@ -349,15 +279,10 @@
       </section>
     </div>
 
-    <!-- Panneau de détail -->
+    <!-- ═══ PANNEAU DÉTAIL ═══ -->
     <Teleport to="body">
       <Transition name="fade">
-        <div
-          v-if="panelOpen"
-          class="fixed inset-0 z-[90] bg-chocolate/40 backdrop-blur-[2px]"
-          aria-hidden="true"
-          @click="closePanel"
-        />
+        <div v-if="panelOpen" class="fixed inset-0 z-[90] bg-chocolate/40 backdrop-blur-[2px]" aria-hidden="true" @click="closePanel" />
       </Transition>
 
       <Transition name="drawer">
@@ -371,15 +296,11 @@
           <!-- En-tête panneau -->
           <div class="flex items-start justify-between gap-4 border-b border-cream-dark bg-white px-5 py-5 sm:px-7">
             <div class="min-w-0">
-              <p class="text-xs font-semibold uppercase tracking-wide text-caramel-dark">
-                Demande sur mesure
-              </p>
+              <p class="text-xs font-semibold uppercase tracking-wide text-caramel-dark">Demande sur mesure</p>
               <h2 class="mt-1 truncate font-display text-2xl font-bold text-chocolate">
                 {{ activeOrder.reference || `CMD-${activeOrder.id}` }}
               </h2>
-              <p class="mt-1 text-sm text-muted">
-                Reçue le {{ formatDate(activeOrder.created_at) }}
-              </p>
+              <p class="mt-1 text-sm text-muted">Reçue le {{ formatDate(activeOrder.created_at) }}</p>
             </div>
             <button
               type="button"
@@ -387,14 +308,7 @@
               aria-label="Fermer le panneau"
               @click="closePanel"
             >
-              <svg
-                class="h-5 w-5"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                aria-hidden="true"
-              >
+              <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                 <path d="m18 6-12 12M6 6l12 12" />
               </svg>
             </button>
@@ -402,40 +316,25 @@
 
           <!-- Contenu panneau -->
           <div class="flex-1 space-y-6 overflow-y-auto px-5 py-6 sm:px-7">
-            <div
-              v-if="actionMessage"
-              class="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800"
-              role="status"
-            >
+            <div v-if="actionMessage" class="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800" role="status">
               {{ actionMessage }}
             </div>
-
-            <div
-              v-if="actionError"
-              class="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
-              role="alert"
-            >
+            <div v-if="actionError" class="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700" role="alert">
               {{ actionError }}
             </div>
 
-            <!-- Statut -->
+            <!-- Statut + Devis -->
             <section class="rounded-2xl border border-cream-dark bg-white p-4">
               <div class="flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <p class="text-xs font-semibold uppercase tracking-wide text-muted">Statut</p>
-                  <span
-                    class="mt-2 inline-flex rounded-full px-3 py-1.5 text-xs font-semibold"
-                    :class="statusClasses(activeOrder.status)"
-                  >
+                  <span class="mt-2 inline-flex rounded-full px-3 py-1.5 text-xs font-semibold" :class="statusClasses(activeOrder.status)">
                     {{ statusLabel(activeOrder.status) }}
                   </span>
                 </div>
                 <div class="text-right">
                   <p class="text-xs font-semibold uppercase tracking-wide text-muted">Devis</p>
-                  <span
-                    class="mt-2 inline-flex rounded-full px-3 py-1.5 text-xs font-semibold"
-                    :class="quoteClasses(activeOrder)"
-                  >
+                  <span class="mt-2 inline-flex rounded-full px-3 py-1.5 text-xs font-semibold" :class="quoteClasses(activeOrder)">
                     {{ quoteLabel(activeOrder) }}
                   </span>
                 </div>
@@ -446,9 +345,7 @@
             <section>
               <h3 class="mb-3 font-semibold text-chocolate">Informations client</h3>
               <div class="rounded-2xl border border-cream-dark bg-white p-4">
-                <p class="font-semibold text-chocolate">
-                  {{ activeOrder.customer_name || 'Client non renseigné' }}
-                </p>
+                <p class="font-semibold text-chocolate">{{ activeOrder.customer_name || 'Client non renseigné' }}</p>
                 <a
                   v-if="activeOrder.customer_email || activeOrder.email"
                   class="mt-2 block break-all text-sm text-caramel-dark underline underline-offset-2"
@@ -468,27 +365,19 @@
               <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div class="rounded-2xl border border-cream-dark bg-white p-4">
                   <p class="text-xs text-muted">Type d'événement</p>
-                  <p class="mt-1 font-medium text-chocolate">
-                    {{ eventLabel(activeOrder.event_type) }}
-                  </p>
+                  <p class="mt-1 font-medium text-chocolate">{{ eventLabel(activeOrder.event_type) }}</p>
                 </div>
                 <div class="rounded-2xl border border-cream-dark bg-white p-4">
                   <p class="text-xs text-muted">Date prévue</p>
-                  <p class="mt-1 font-medium text-chocolate">
-                    {{ formatDate(activeOrder.event_date) }}
-                  </p>
+                  <p class="mt-1 font-medium text-chocolate">{{ formatDate(activeOrder.event_date) }}</p>
                 </div>
                 <div class="rounded-2xl border border-cream-dark bg-white p-4">
                   <p class="text-xs text-muted">Nombre de personnes</p>
-                  <p class="mt-1 font-medium text-chocolate">
-                    {{ activeOrder.guest_count || activeOrder.number_of_guests || 'Non précisé' }}
-                  </p>
+                  <p class="mt-1 font-medium text-chocolate">{{ activeOrder.guests_count || activeOrder.number_of_guests || 'Non précisé' }}</p>
                 </div>
                 <div class="rounded-2xl border border-cream-dark bg-white p-4">
                   <p class="text-xs text-muted">Budget indicatif</p>
-                  <p class="mt-1 font-medium text-chocolate">
-                    {{ formatPrice(activeOrder.estimated_budget) }}
-                  </p>
+                  <p class="mt-1 font-medium text-chocolate">{{ formatPrice(activeOrder.estimated_budget) }}</p>
                 </div>
               </div>
             </section>
@@ -501,23 +390,16 @@
               </div>
             </section>
 
-            <!-- Devis (envoi uniquement, pas de mise à jour) -->
-            <section
-              v-if="activeOrder.status === 'pending_quote'"
-              class="rounded-2xl border border-caramel/40 bg-white p-5"
-            >
+            <!-- Préparation devis (pending_quote) -->
+            <section v-if="activeOrder.status === 'pending_quote'" class="rounded-2xl border border-caramel/40 bg-white p-5">
               <div class="mb-4">
                 <h3 class="font-semibold text-chocolate">Préparer le devis</h3>
-                <p class="mt-1 text-sm text-muted">
-                  Indique le prix proposé et ajoute un message pour le client.
-                </p>
+                <p class="mt-1 text-sm text-muted">Indique le prix proposé et ajoute un message pour le client.</p>
               </div>
 
               <div v-if="quoteForActiveOrder" class="space-y-4">
                 <label class="block">
-                  <span class="mb-1.5 block text-sm font-medium text-chocolate">
-                    Montant du devis (€)
-                  </span>
+                  <span class="mb-1.5 block text-sm font-medium text-chocolate">Montant du devis (€)</span>
                   <div class="relative">
                     <input
                       v-model.number="quoteForActiveOrder.price"
@@ -533,9 +415,7 @@
                 </label>
 
                 <label class="block">
-                  <span class="mb-1.5 block text-sm font-medium text-chocolate">
-                    Message accompagnant le devis
-                  </span>
+                  <span class="mb-1.5 block text-sm font-medium text-chocolate">Message accompagnant le devis</span>
                   <textarea
                     v-model="quoteForActiveOrder.response"
                     rows="4"
@@ -551,15 +431,7 @@
                   :disabled="savingQuote || !isQuoteValid"
                   @click="sendQuote"
                 >
-                  <svg
-                    v-if="savingQuote"
-                    class="h-4 w-4 animate-spin"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    aria-hidden="true"
-                  >
+                  <svg v-if="savingQuote" class="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                     <circle cx="12" cy="12" r="9" opacity=".25" />
                     <path d="M21 12a9 9 0 0 0-9-9" />
                   </svg>
@@ -568,11 +440,8 @@
               </div>
             </section>
 
-            <!-- Devis déjà envoyé (lecture seule) -->
-            <section
-              v-else-if="activeOrder.quoted_price != null"
-              class="rounded-2xl border border-cream-dark bg-white p-4"
-            >
+            <!-- Devis envoyé (lecture seule) -->
+            <section v-else-if="activeOrder.quoted_price != null" class="rounded-2xl border border-cream-dark bg-white p-4">
               <h3 class="mb-2 font-semibold text-chocolate">Devis envoyé</h3>
               <p class="text-2xl font-bold text-chocolate">{{ formatPrice(activeOrder.quoted_price) }}</p>
               <p class="mt-3 whitespace-pre-line rounded-xl bg-cream/70 p-3 text-sm leading-6 text-chocolate-soft">
@@ -580,9 +449,9 @@
               </p>
             </section>
 
-            <!-- Paiement -->
+            <!-- Paiement + Documents -->
             <section v-if="activeOrder.quoted_price != null">
-              <h3 class="mb-3 font-semibold text-chocolate">Suivi du paiement</h3>
+              <h3 class="mb-3 font-semibold text-chocolate">Paiement</h3>
               <div class="rounded-2xl border border-cream-dark bg-white p-4">
                 <div class="flex items-center justify-between gap-3 text-sm">
                   <span class="text-muted">Montant du devis</span>
@@ -593,43 +462,35 @@
                   <strong class="text-chocolate">{{ formatPrice(activeOrder.amount_paid) }}</strong>
                 </div>
                 <div class="mt-3 h-2 overflow-hidden rounded-full bg-cream-dark">
-                  <div
-                    class="h-full rounded-full bg-caramel transition-all"
-                    :style="{ width: `${paymentProgress(activeOrder)}%` }"
-                  />
+                  <div class="h-full rounded-full bg-caramel transition-all" :style="{ width: `${paymentProgress(activeOrder)}%` }" />
                 </div>
                 <div class="mt-2 flex items-center justify-between gap-3 text-xs text-muted">
                   <span>{{ paymentProgress(activeOrder) }} % payé</span>
                   <span>Reste {{ formatPrice(remainingAmount(activeOrder)) }}</span>
                 </div>
-              </div>
-            </section>
 
-            <!-- ✅ Documents -->
-            <section v-if="hasAnyDocument(activeOrder)">
-              <h3 class="mb-3 font-semibold text-chocolate">Documents</h3>
-              <div class="space-y-2">
-                <div
-                  v-for="doc in documentItems(activeOrder)"
-                  :key="doc.kind"
-                  class="flex items-center justify-between gap-3 rounded-2xl border border-cream-dark bg-white p-4"
-                  :class="{ 'opacity-60': !doc.available }"
-                >
-                  <div class="min-w-0">
-                    <p class="text-sm font-semibold text-chocolate">{{ doc.label }}</p>
-                    <p class="mt-0.5 text-xs text-muted">{{ doc.description }}</p>
-                  </div>
-                  <a
-                    v-if="doc.available"
-                    :href="documentUrl(activeOrder, doc.kind)"
-                    target="_blank"
-                    class="shrink-0 rounded-full border border-caramel px-3 py-1.5 text-xs font-semibold text-caramel-dark transition hover:bg-caramel hover:text-white"
+                <!-- Documents -->
+                <div v-if="hasAnyDocument(activeOrder)" class="mt-4 space-y-2 border-t border-cream-dark pt-4">
+                  <div
+                    v-for="doc in documentItems(activeOrder)"
+                    :key="doc.kind"
+                    class="flex items-center justify-between gap-3 rounded-xl bg-cream/50 p-3"
+                    :class="{ 'opacity-60': !doc.available }"
                   >
-                    Consulter ↗
-                  </a>
-                  <span v-else class="shrink-0 text-xs italic text-muted">
-                    {{ doc.pendingLabel }}
-                  </span>
+                    <div class="min-w-0">
+                      <p class="text-sm font-semibold text-chocolate">{{ doc.label }}</p>
+                      <p class="mt-0.5 text-xs text-muted">{{ doc.description }}</p>
+                    </div>
+                    <a
+                      v-if="doc.available"
+                      :href="documentUrl(activeOrder, doc.kind)"
+                      target="_blank"
+                      class="shrink-0 rounded-full border border-caramel px-3 py-1.5 text-xs font-semibold text-caramel-dark transition hover:bg-caramel hover:text-white"
+                    >
+                      Consulter ↗
+                    </a>
+                    <span v-else class="shrink-0 text-xs italic text-muted">{{ doc.pendingLabel }}</span>
+                  </div>
                 </div>
               </div>
             </section>
@@ -649,13 +510,13 @@
                 </button>
 
                 <button
-                  v-if="['accepted', 'deposit_paid'].includes(activeOrder.status)"
+                  v-if="activeOrder.status === 'accepted'"
                   type="button"
                   class="rounded-xl bg-caramel px-4 py-3 text-sm font-semibold text-white transition hover:bg-caramel-dark disabled:opacity-60"
                   :disabled="savingAction"
-                  @click="markCompleted"
+                  @click="openCompleteModal"
                 >
-                  Marquer comme terminée
+                  {{ hasBalanceDue ? 'Encaisser le solde et terminer' : 'Terminer la commande' }}
                 </button>
 
                 <button
@@ -672,26 +533,16 @@
         </aside>
       </Transition>
 
-      <!-- Confirmation de refus -->
+      <!-- ═══ MODALE REFUS ═══ -->
       <Transition name="fade">
         <div
           v-if="refuseModalOpen"
           class="fixed inset-0 z-[110] flex items-center justify-center bg-chocolate/50 p-4"
           @click.self="refuseModalOpen = false"
         >
-          <div
-            class="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl"
-            role="alertdialog"
-            aria-modal="true"
-            aria-labelledby="refuse-title"
-            aria-describedby="refuse-description"
-          >
-            <h3 id="refuse-title" class="font-display text-xl font-bold text-chocolate">
-              Refuser cette demande ?
-            </h3>
-            <p id="refuse-description" class="mt-2 text-sm leading-6 text-muted">
-              Cette action va enregistrer le refus de la demande.
-            </p>
+          <div class="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl" role="alertdialog" aria-modal="true">
+            <h3 class="font-display text-xl font-bold text-chocolate">Refuser cette demande ?</h3>
+            <p class="mt-2 text-sm leading-6 text-muted">Cette action va enregistrer le refus de la demande.</p>
             <div class="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
               <button
                 type="button"
@@ -713,12 +564,87 @@
           </div>
         </div>
       </Transition>
+
+      <!-- ═══ MODALE CLÔTURE ═══ -->
+      <Transition name="fade">
+        <div
+          v-if="completeModalOpen"
+          class="fixed inset-0 z-[110] flex items-center justify-center bg-chocolate/50 p-4"
+          @click.self="closeCompleteModal"
+        >
+          <div class="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl" role="dialog" aria-modal="true">
+            <h3 class="font-display text-xl font-bold text-chocolate">
+              {{ hasBalanceDue ? 'Encaisser le solde et terminer' : 'Terminer la commande' }}
+            </h3>
+
+            <div class="mt-4 space-y-2 rounded-xl bg-cream p-4 text-sm">
+              <div class="flex justify-between">
+                <span class="text-muted">Total du devis</span>
+                <strong class="text-chocolate">{{ formatPrice(activeOrder?.quoted_price) }}</strong>
+              </div>
+              <div class="flex justify-between">
+                <span class="text-muted">Déjà réglé</span>
+                <strong class="text-chocolate">{{ formatPrice(activeOrder?.amount_paid) }}</strong>
+              </div>
+              <div v-if="hasBalanceDue" class="flex justify-between border-t border-cream-dark pt-2">
+                <span class="font-semibold text-caramel-dark">Reste à encaisser</span>
+                <strong class="text-caramel-dark">{{ formatPrice(balanceDue) }}</strong>
+              </div>
+            </div>
+
+            <template v-if="hasBalanceDue">
+              <p class="mt-4 text-sm font-medium text-chocolate">Mode de règlement du solde :</p>
+              <div class="mt-2 space-y-2">
+                <label
+                  v-for="m in paymentMethods"
+                  :key="m.value"
+                  class="flex cursor-pointer items-center gap-3 rounded-xl border-2 p-3 text-sm transition"
+                  :class="completeForm.payment_method === m.value
+                    ? 'border-caramel bg-caramel/5'
+                    : 'border-cream-dark bg-white hover:border-caramel'"
+                >
+                  <input
+                    v-model="completeForm.payment_method"
+                    type="radio"
+                    :value="m.value"
+                    class="h-4 w-4 accent-caramel"
+                  />
+                  <span class="font-medium text-chocolate">{{ m.label }}</span>
+                </label>
+              </div>
+            </template>
+
+            <p v-else class="mt-4 text-sm text-muted">
+              Le devis est intégralement payé. Confirmer la clôture de la commande ?
+            </p>
+
+            <div class="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                class="rounded-xl border border-cream-dark px-4 py-2.5 text-sm font-semibold text-chocolate hover:bg-cream"
+                :disabled="savingAction"
+                @click="closeCompleteModal"
+              >
+                Annuler
+              </button>
+              <button
+                type="button"
+                class="rounded-xl bg-caramel px-4 py-2.5 text-sm font-semibold text-white hover:bg-caramel-dark disabled:opacity-60"
+                :disabled="savingAction || (hasBalanceDue && !completeForm.payment_method)"
+                @click="confirmComplete"
+              >
+                {{ savingAction ? 'En cours...' : 'Confirmer' }}
+              </button>
+            </div>
+          </div>
+        </div>
+      </Transition>
     </Teleport>
   </div>
 </template>
 
 <script setup>
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 
 const auth = useAuthStore()
@@ -743,9 +669,21 @@ const actionMessage = ref('')
 const actionError = ref('')
 const refuseModalOpen = ref(false)
 
-let refreshInterval = null
+const completeModalOpen = ref(false)
+const completeForm = reactive({ payment_method: null })
+
+const paymentMethods = [
+  { value: 'cash', label: '💵 Espèces' },
+  { value: 'card', label: '💳 Carte bancaire' },
+  { value: 'transfer', label: '🏦 Virement' },
+  { value: 'check', label: '📝 Chèque' },
+]
 
 const isAdmin = computed(() => auth.user?.role === 'admin')
+
+/* ═══════════════════════════════════════════════════════════
+   STATS
+   ═══════════════════════════════════════════════════════════ */
 
 const stats = computed(() => [
   {
@@ -763,7 +701,7 @@ const stats = computed(() => [
   {
     key: 'accepted',
     title: 'En préparation',
-    value: orders.value.filter(o => ['accepted', 'deposit_paid'].includes(o.status)).length,
+    value: orders.value.filter(o => o.status === 'accepted').length,
     subtitle: 'Commandes acceptées',
   },
   {
@@ -780,6 +718,10 @@ const stats = computed(() => [
   },
 ])
 
+/* ═══════════════════════════════════════════════════════════
+   COMPUTED
+   ═══════════════════════════════════════════════════════════ */
+
 const quoteForActiveOrder = computed(() => {
   if (!activeOrder.value) return null
   return quotes.value[activeOrder.value.id] || null
@@ -795,16 +737,22 @@ const isQuoteValid = computed(() => {
   return Boolean(quote && Number(quote.price) > 0)
 })
 
+const isBusy = computed(() => savingAction.value || savingQuote.value)
+
+const balanceDue = computed(() => {
+  if (!activeOrder.value) return 0
+  const total = Number(activeOrder.value.quoted_price) || 0
+  const paid = Number(activeOrder.value.amount_paid) || 0
+  return Math.max(0, total - paid)
+})
+
+const hasBalanceDue = computed(() => balanceDue.value > 0.01)
+
 const filteredOrders = computed(() => {
   let result = [...orders.value]
 
   if (activeStat.value !== 'all') {
-    result = result.filter(order => {
-      if (activeStat.value === 'accepted') {
-        return ['accepted', 'deposit_paid'].includes(order.status)
-      }
-      return order.status === activeStat.value
-    })
+    result = result.filter(order => order.status === activeStat.value)
   }
 
   if (statusFilter.value !== 'all') {
@@ -862,6 +810,10 @@ const filteredOrders = computed(() => {
 
   return result
 })
+
+/* ═══════════════════════════════════════════════════════════
+   CHARGEMENT
+   ═══════════════════════════════════════════════════════════ */
 
 function ensureQuote(order) {
   if (!order) return
@@ -927,6 +879,29 @@ async function loadOrders({ silent = false } = {}) {
   }
 }
 
+/* ═══════════════════════════════════════════════════════════
+   TEMPS RÉEL
+   ═══════════════════════════════════════════════════════════ */
+
+function handleNewCustomOrder() {
+  if (isBusy.value) return
+  loadOrders({ silent: true })
+}
+
+function handleCustomOrderPaid() {
+  if (isBusy.value) return
+  loadOrders({ silent: true })
+}
+
+function handleCustomOrderCompleted() {
+  if (isBusy.value) return
+  loadOrders({ silent: true })
+}
+
+/* ═══════════════════════════════════════════════════════════
+   INTERACTIONS
+   ═══════════════════════════════════════════════════════════ */
+
 function openPanel(order) {
   activeOrder.value = order
   ensureQuote(order)
@@ -934,11 +909,13 @@ function openPanel(order) {
   actionMessage.value = ''
   actionError.value = ''
   refuseModalOpen.value = false
+  completeModalOpen.value = false
 }
 
 function closePanel() {
   panelOpen.value = false
   refuseModalOpen.value = false
+  completeModalOpen.value = false
 }
 
 function selectStat(key) {
@@ -964,6 +941,10 @@ function setSort(key) {
     sortMode.value = 'priority'
   }
 }
+
+/* ═══════════════════════════════════════════════════════════
+   FORMATAGE
+   ═══════════════════════════════════════════════════════════ */
 
 function formatDate(value) {
   if (!value) return 'Date non renseignée'
@@ -1012,7 +993,6 @@ function statusLabel(status) {
     pending_quote: 'À traiter',
     quoted: 'Devis envoyé',
     accepted: 'Acceptée',
-    deposit_paid: 'Acompte réglé',
     completed: 'Terminée',
     rejected: 'Refusée par le client',
     refused_by_merchant: 'Refusée par le pâtissier',
@@ -1027,7 +1007,6 @@ function statusClasses(status) {
     pending_quote: 'bg-amber-100 text-amber-800',
     quoted: 'bg-sky-100 text-sky-800',
     accepted: 'bg-emerald-100 text-emerald-800',
-    deposit_paid: 'bg-emerald-100 text-emerald-800',
     completed: 'bg-stone-200 text-stone-700',
     rejected: 'bg-rose-100 text-rose-800',
     refused_by_merchant: 'bg-red-100 text-red-800',
@@ -1077,7 +1056,23 @@ function paymentProgress(order) {
   return Math.min(100, Math.max(0, Math.round((paid / total) * 100)))
 }
 
-// ✅ Documents
+function hasBalanceDueFor(order) {
+  if (!order || order.status !== 'accepted') return false
+  const total = Number(order.quoted_price) || 0
+  const paid = Number(order.amount_paid) || 0
+  return total - paid > 0.01
+}
+
+function balanceDueFor(order) {
+  const total = Number(order.quoted_price) || 0
+  const paid = Number(order.amount_paid) || 0
+  return Math.max(0, total - paid)
+}
+
+/* ═══════════════════════════════════════════════════════════
+   DOCUMENTS
+   ═══════════════════════════════════════════════════════════ */
+
 function hasAnyDocument(order) {
   if (!order) return false
   return Boolean(
@@ -1098,7 +1093,7 @@ function documentItems(order) {
     },
     {
       kind: 'deposit',
-      label: 'Facture d\'acompte',
+      label: "Facture d'acompte",
       description: 'Justificatif du premier règlement',
       available: Boolean(order.deposit_invoice_path),
       pendingLabel: 'Émise après paiement',
@@ -1126,7 +1121,10 @@ function documentUrl(order, kind) {
   return routes[kind] || '#'
 }
 
-// ✅ CORRECTION 422 : envoyer les noms de champs attendus par Laravel
+/* ═══════════════════════════════════════════════════════════
+   ACTIONS
+   ═══════════════════════════════════════════════════════════ */
+
 async function sendQuote() {
   if (!activeOrder.value || !quoteForActiveOrder.value || !isQuoteValid.value) return
 
@@ -1146,7 +1144,6 @@ async function sendQuote() {
       },
       credentials: 'include',
       body: JSON.stringify({
-        // ✅ Noms attendus par le backend Laravel
         quoted_price: Number(quote.price),
         merchant_response: quote.response || '',
       }),
@@ -1155,7 +1152,6 @@ async function sendQuote() {
     const data = await response.json().catch(() => ({}))
 
     if (!response.ok) {
-      // ✅ Afficher le message de validation Laravel si présent
       const validationMessage = data.errors
         ? Object.values(data.errors).flat().join(' ')
         : data.message
@@ -1202,15 +1198,24 @@ async function confirmRefuse() {
   }
 }
 
-// ✅ CORRECTION 500 : vérifier les prérequis avant d'envoyer
-async function markCompleted() {
+function openCompleteModal() {
   if (!activeOrder.value) return
-
-  // ✅ Autoriser accepted ET deposit_paid → completed
-  if (!['accepted', 'deposit_paid'].includes(activeOrder.value.status)) {
-    actionError.value = 'Cette demande ne peut pas être marquée comme terminée dans son état actuel.'
+  if (activeOrder.value.status !== 'accepted') {
+    actionError.value = 'Cette demande ne peut pas être clôturée dans son état actuel.'
     return
   }
+  completeForm.payment_method = null
+  completeModalOpen.value = true
+}
+
+function closeCompleteModal() {
+  completeModalOpen.value = false
+  completeForm.payment_method = null
+}
+
+async function confirmComplete() {
+  if (!activeOrder.value) return
+  if (hasBalanceDue.value && !completeForm.payment_method) return
 
   const orderId = activeOrder.value.id
   savingAction.value = true
@@ -1218,6 +1223,11 @@ async function markCompleted() {
   actionMessage.value = ''
 
   try {
+    const body = { status: 'completed' }
+    if (hasBalanceDue.value) {
+      body.payment_method = completeForm.payment_method
+    }
+
     const response = await fetch(`/api/merchant/custom-orders/${orderId}/status`, {
       method: 'PUT',
       headers: {
@@ -1225,7 +1235,7 @@ async function markCompleted() {
         Accept: 'application/json',
       },
       credentials: 'include',
-      body: JSON.stringify({ status: 'completed' }),
+      body: JSON.stringify(body),
     })
 
     const data = await response.json().catch(() => ({}))
@@ -1237,7 +1247,10 @@ async function markCompleted() {
       throw new Error(validationMessage || 'Impossible de terminer cette commande.')
     }
 
-    actionMessage.value = 'La commande a été marquée comme terminée.'
+    Object.assign(activeOrder.value, data)
+    actionMessage.value = 'La commande a été terminée.'
+    completeModalOpen.value = false
+    completeForm.payment_method = null
     await loadOrders({ silent: true })
   } catch (error) {
     actionError.value = error.message || 'Une erreur est survenue.'
@@ -1246,15 +1259,15 @@ async function markCompleted() {
   }
 }
 
-function handleNotificationClick(event) {
-  if (event.detail?.url === '/admin/sur-mesure') {
-    loadOrders({ silent: true })
-  }
-}
+/* ═══════════════════════════════════════════════════════════
+   CLAVIER + CYCLE DE VIE
+   ═══════════════════════════════════════════════════════════ */
 
 function handleKeydown(event) {
   if (event.key === 'Escape') {
-    if (refuseModalOpen.value) {
+    if (completeModalOpen.value) {
+      closeCompleteModal()
+    } else if (refuseModalOpen.value) {
       refuseModalOpen.value = false
     } else if (panelOpen.value) {
       closePanel()
@@ -1271,18 +1284,16 @@ watch(panelOpen, isOpen => {
 onMounted(() => {
   loadOrders()
 
-  refreshInterval = setInterval(() => {
-    loadOrders({ silent: true })
-  }, 30_000)
-
-  window.addEventListener('notification-click', handleNotificationClick)
+  window.addEventListener('new-custom-order-received', handleNewCustomOrder)
+  window.addEventListener('custom-order-paid', handleCustomOrderPaid)
+  window.addEventListener('custom-order-completed', handleCustomOrderCompleted)
   window.addEventListener('keydown', handleKeydown)
 })
 
 onUnmounted(() => {
-  if (refreshInterval) clearInterval(refreshInterval)
-
-  window.removeEventListener('notification-click', handleNotificationClick)
+  window.removeEventListener('new-custom-order-received', handleNewCustomOrder)
+  window.removeEventListener('custom-order-paid', handleCustomOrderPaid)
+  window.removeEventListener('custom-order-completed', handleCustomOrderCompleted)
   window.removeEventListener('keydown', handleKeydown)
 
   if (typeof document !== 'undefined') {

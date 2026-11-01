@@ -323,20 +323,38 @@
                         </label>
                     </div>
 
-                    <!-- Adresse saisie manuellement -->
+                    <!-- Adresse saisie manuellement (avec autocomplétion) -->
                     <div v-else class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                        <div class="sm:col-span-2">
+                        <div class="relative sm:col-span-2">
                             <label class="mb-1.5 block text-sm font-medium text-chocolate-soft">
                                 Adresse <span class="text-raspberry">*</span>
                             </label>
                             <input
                                 v-model="form.delivery_address"
                                 type="text"
-                                autocomplete="street-address"
+                                autocomplete="off"
                                 placeholder="Numéro et rue"
                                 required
                                 class="w-full rounded-xl border-2 border-cream-dark bg-cream px-4 py-3 text-sm text-chocolate placeholder:text-muted/60 transition-colors focus:border-caramel focus:bg-white focus:outline-none"
+                                @input="onAddressInput"
+                                @focus="showSuggestions = suggestions.length > 0"
+                                @blur="hideSuggestions"
                             />
+
+                            <!-- Suggestions d'adresses -->
+                            <ul
+                                v-if="showSuggestions && suggestions.length > 0"
+                                class="absolute left-0 right-0 top-full z-20 mt-1 max-h-64 overflow-y-auto rounded-xl border border-cream-dark bg-white py-1 shadow-lg"
+                            >
+                                <li
+                                    v-for="(s, i) in suggestions"
+                                    :key="i"
+                                    class="cursor-pointer border-l-2 border-transparent px-4 py-2.5 text-sm text-chocolate transition hover:border-caramel hover:bg-cream"
+                                    @mousedown.prevent="selectSuggestion(s)"
+                                >
+                                    {{ s.label }}
+                                </li>
+                            </ul>
                         </div>
 
                         <div>
@@ -445,7 +463,7 @@
 </template>
 
 <script setup>
-import { computed, nextTick, onMounted, reactive, ref } from 'vue';
+import { computed, nextTick, onMounted, onUnmounted, reactive, ref } from 'vue';
 import { useRoute } from 'vue-router';
 import axios from 'axios';
 import { useAuthStore } from '../stores/auth';
@@ -477,6 +495,71 @@ const form = reactive({
     delivery_city: '',
     delivery_notes: '',
 });
+
+/* ─────────────────────────────────────────────────────────────
+   Autocomplétion d'adresse (API Adresse.data.gouv.fr)
+   ───────────────────────────────────────────────────────────── */
+
+const suggestions = ref([]);
+const showSuggestions = ref(false);
+let debounceTimer = null;
+
+/**
+ * Masque le dropdown après un court délai, pour laisser
+ * le @mousedown de la suggestion se déclencher avant le @blur.
+ */
+function hideSuggestions() {
+    window.setTimeout(() => {
+        showSuggestions.value = false;
+    }, 200);
+}
+
+/**
+ * Debounce la recherche à chaque frappe sur le champ adresse.
+ */
+function onAddressInput() {
+    clearTimeout(debounceTimer);
+    const query = form.delivery_address;
+
+    if (!query || query.length < 3) {
+        suggestions.value = [];
+        showSuggestions.value = false;
+        return;
+    }
+
+    debounceTimer = setTimeout(async () => {
+        try {
+            const res = await fetch(
+                `https://api-adresse.data.gouv.fr/search/?q=${encodeURIComponent(query)}&limit=5&citycode=13055`
+            );
+            const data = await res.json();
+            suggestions.value = data.features.map((f) => ({
+                label: f.properties.label,
+                street: f.properties.name,
+                postalCode: f.properties.postcode,
+                city: f.properties.city,
+            }));
+            showSuggestions.value = true;
+        } catch {
+            suggestions.value = [];
+        }
+    }, 300);
+}
+
+/**
+ * Remplit le formulaire avec l'adresse sélectionnée.
+ */
+function selectSuggestion(s) {
+    form.delivery_address = s.street;
+    form.delivery_postal_code = s.postalCode;
+    form.delivery_city = s.city;
+    suggestions.value = [];
+    showSuggestions.value = false;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   Helpers
+   ───────────────────────────────────────────────────────────── */
 
 const minDate = computed(() => {
     const d = new Date();
@@ -579,5 +662,10 @@ onMounted(async () => {
     } finally {
         loadingPackage.value = false;
     }
+});
+
+onUnmounted(() => {
+    // Évite qu'un debounce en attente déclenche un fetch sur un composant démonté.
+    clearTimeout(debounceTimer);
 });
 </script>

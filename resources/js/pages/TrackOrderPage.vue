@@ -12,17 +12,11 @@
                 Suivre ma commande
             </h1>
 
-            <p
-                v-if="!isAuthenticated"
-                class="mx-auto mt-3 max-w-xl leading-7 text-muted"
-            >
+            <p v-if="!isAuthenticated" class="mx-auto mt-3 max-w-xl leading-7 text-muted">
                 Entrez votre référence de commande et l’email ou le téléphone utilisé lors de l’achat.
             </p>
 
-            <p
-                v-else
-                class="mx-auto mt-3 max-w-xl leading-7 text-muted"
-            >
+            <p v-else class="mx-auto mt-3 max-w-xl leading-7 text-muted">
                 Saisissez votre référence de commande pour retrouver les détails de votre achat.
             </p>
         </header>
@@ -34,10 +28,7 @@
             @submit.prevent="track"
         >
             <div class="space-y-2">
-                <label
-                    for="order-reference"
-                    class="block text-sm font-semibold text-chocolate"
-                >
+                <label for="order-reference" class="block text-sm font-semibold text-chocolate">
                     Référence de commande
                 </label>
 
@@ -57,14 +48,8 @@
                 </p>
             </div>
 
-            <div
-                v-if="!isAuthenticated"
-                class="space-y-2"
-            >
-                <label
-                    for="order-contact"
-                    class="block text-sm font-semibold text-chocolate"
-                >
+            <div v-if="!isAuthenticated" class="space-y-2">
+                <label for="order-contact" class="block text-sm font-semibold text-chocolate">
                     Email ou téléphone
                 </label>
 
@@ -84,7 +69,6 @@
                 </p>
             </div>
 
-            <!-- Erreur -->
             <div
                 v-if="error"
                 role="alert"
@@ -99,11 +83,7 @@
                 :disabled="loading || !form.reference.trim() || (!isAuthenticated && !form.contact.trim())"
                 class="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-caramel px-6 py-3.5 font-semibold text-white shadow-soft transition hover:bg-caramel-dark focus:outline-none focus:ring-2 focus:ring-caramel focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
             >
-                <span
-                    v-if="loading"
-                    class="h-5 w-5 animate-spin rounded-full border-2 border-white/40 border-t-white"
-                    aria-hidden="true"
-                ></span>
+                <span v-if="loading" class="h-5 w-5 animate-spin rounded-full border-2 border-white/40 border-t-white" aria-hidden="true"></span>
 
                 <span>
                     {{ loading ? 'Recherche en cours…' : 'Suivre ma commande' }}
@@ -119,11 +99,7 @@
         </form>
 
         <!-- Détails de la commande -->
-        <section
-            v-else
-            class="animate-fade-up space-y-5"
-            aria-label="Détails de la commande"
-        >
+        <section v-else class="animate-fade-up space-y-5" aria-label="Détails de la commande">
             <div class="overflow-hidden rounded-3xl bg-white shadow-card">
                 <!-- En-tête de la commande -->
                 <div class="border-b border-cream-dark p-5 sm:p-8">
@@ -147,10 +123,7 @@
                             :class="statusClasses(order.status)"
                             class="inline-flex w-fit shrink-0 items-center gap-2 rounded-full px-3.5 py-2 text-sm font-semibold"
                         >
-                            <span
-                                class="h-2 w-2 rounded-full bg-current"
-                                aria-hidden="true"
-                            ></span>
+                            <span class="h-2 w-2 rounded-full bg-current" aria-hidden="true"></span>
                             {{ statusLabel(order.status) }}
                         </span>
                     </div>
@@ -173,10 +146,7 @@
                         </div>
                     </div>
 
-                    <div
-                        v-if="order.items?.length"
-                        class="divide-y divide-cream-dark"
-                    >
+                    <div v-if="order.items?.length" class="divide-y divide-cream-dark">
                         <div
                             v-for="(item, i) in order.items"
                             :key="item.id ?? `${item.product_name}-${i}`"
@@ -197,10 +167,7 @@
                         </div>
                     </div>
 
-                    <p
-                        v-else
-                        class="rounded-xl bg-cream p-4 text-sm text-muted"
-                    >
+                    <p v-else class="rounded-xl bg-cream p-4 text-sm text-muted">
                         Aucun article à afficher pour cette commande.
                     </p>
 
@@ -218,9 +185,7 @@
                                 {{ order.delivery_type === 'delivery' ? 'Livraison' : 'Retrait' }}
                             </span>
 
-                            <span
-                                :class="Number(order.delivery_fee) > 0 ? 'font-medium text-chocolate' : 'font-semibold text-emerald-700'"
-                            >
+                            <span :class="Number(order.delivery_fee) > 0 ? 'font-medium text-chocolate' : 'font-semibold text-emerald-700'">
                                 {{ Number(order.delivery_fee) > 0 ? formatPrice(order.delivery_fee) : 'Offerte' }}
                             </span>
                         </div>
@@ -268,6 +233,47 @@
                 </div>
             </div>
 
+            <!-- ✅ Documents -->
+            <div
+                v-if="order.invoice_path"
+                class="rounded-3xl bg-white p-5 shadow-card sm:p-8"
+            >
+                <div class="mb-4 flex items-center gap-3">
+                    <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-caramel/10 text-xl">
+                        🧾
+                    </div>
+
+                    <div>
+                        <h3 class="font-display text-xl font-bold text-chocolate">
+                            Mes documents
+                        </h3>
+                        <p class="text-sm text-muted">
+                            Téléchargez votre facture
+                        </p>
+                    </div>
+                </div>
+
+                <div class="flex flex-col justify-between gap-3 rounded-2xl border border-cream-dark p-4 sm:flex-row sm:items-center">
+                    <div class="min-w-0">
+                        <p class="text-sm font-semibold text-chocolate">
+                            Facture {{ order.invoice_number }}
+                        </p>
+                        <p class="mt-1 text-xs text-muted">
+                            Document officiel de votre commande
+                        </p>
+                    </div>
+
+                    <a
+                        :href="invoiceUrl"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        class="inline-flex items-center justify-center rounded-full border border-caramel px-4 py-2 text-sm font-semibold text-caramel-dark transition hover:bg-caramel hover:text-white"
+                    >
+                        Télécharger la facture ↗
+                    </a>
+                </div>
+            </div>
+
             <!-- Nouvelle recherche -->
             <button
                 type="button"
@@ -301,6 +307,9 @@ const error = ref(null);
 
 const isAuthenticated = computed(() => Boolean(auth?.isAuthenticated));
 
+// URL signée vers la facture (générée par le backend dans `track()`)
+const invoiceUrl = computed(() => order.value?.invoice_url || '#');
+
 function formatPrice(price) {
     return new Intl.NumberFormat('fr-FR', {
         style: 'currency',
@@ -310,13 +319,8 @@ function formatPrice(price) {
 
 function formatDate(date) {
     if (!date) return 'Date indisponible';
-
     const parsedDate = new Date(date);
-
-    if (Number.isNaN(parsedDate.getTime())) {
-        return 'Date indisponible';
-    }
-
+    if (Number.isNaN(parsedDate.getTime())) return 'Date indisponible';
     return parsedDate.toLocaleDateString('fr-FR', {
         day: 'numeric',
         month: 'long',
@@ -334,7 +338,6 @@ function statusLabel(status) {
         delivered: 'Livrée',
         cancelled: 'Annulée',
     };
-
     return labels[status] || status || 'Statut inconnu';
 }
 
@@ -348,28 +351,20 @@ function statusClasses(status) {
         delivered: 'bg-emerald-50 text-emerald-700',
         cancelled: 'bg-rose-50 text-raspberry',
     };
-
     return classes[status] || 'bg-cream-dark text-chocolate';
 }
 
 async function track() {
     if (loading.value) return;
-
     loading.value = true;
     error.value = null;
 
     try {
-        const payload = {
-            reference: form.reference.trim(),
-        };
-
-        // Le contact est uniquement envoyé pour les visiteurs non connectés.
+        const payload = { reference: form.reference.trim() };
         if (!isAuthenticated.value) {
             payload.contact = form.contact.trim();
         }
-
         const { data } = await axios.post('/api/orders/track', payload);
-
         order.value = data;
     } catch (e) {
         error.value =
@@ -388,30 +383,21 @@ function reset() {
 }
 
 onMounted(async () => {
-    // Essayer de charger l'utilisateur sans bloquer la page en cas d'échec.
     if (auth && !auth.user && typeof auth.fetchUser === 'function') {
         try {
             await auth.fetchUser();
-        } catch {
-            // La recherche en tant que visiteur reste possible.
-        }
+        } catch {}
     }
 
-    // Préremplir la référence depuis les paramètres de l'URL.
     const reference = route.query.reference;
-
     if (typeof reference === 'string' && reference.trim()) {
         form.reference = reference.trim();
-
-        // Pour un client connecté, lancer automatiquement la recherche.
         if (isAuthenticated.value) {
             await track();
         }
     }
 
-    // Préremplir le contact si l'URL le fournit.
     const contact = route.query.contact;
-
     if (typeof contact === 'string') {
         form.contact = contact;
     }

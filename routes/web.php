@@ -9,13 +9,25 @@ use App\Http\Controllers\Api\AdminController;
 use App\Http\Middleware\EnsureUserIsMerchant;
 use App\Http\Middleware\EnsureUserIsAdmin;
 
-// Routes publiques (auth)
+use App\Http\Controllers\Api\EmailVerificationController;
+
 Route::prefix('api')->group(function () {
-    Route::post('/register', [AuthController::class, 'register']);
-    Route::post('/login', [AuthController::class, 'login']);
+    // Routes publiques
+    Route::post('/register', [AuthController::class, 'register'])->middleware('web');
+    Route::post('/login', [AuthController::class, 'login'])->middleware('web');
     Route::post('/logout', [AuthController::class, 'logout'])->middleware('web');
     Route::get('/me', fn (\Illuminate\Http\Request $r) => response()->json(['user' => auth('sanctum')->user()]));
 
+    // ✅ Vérification email — accessible même sans être vérifié
+    Route::get('/email/verify/{id}/{hash}', [EmailVerificationController::class, 'verify'])
+        ->middleware(['signed', 'throttle:6,1'])
+        ->name('verification.verify');
+
+    Route::post('/email/verification-notification', [EmailVerificationController::class, 'resend'])
+        ->middleware(['auth:sanctum', 'throttle:6,1'])
+        ->name('verification.send');
+
+        
     // Routes client authentifié
     Route::middleware('auth:sanctum')->group(function () {
         Route::get('/my-orders', function (\Illuminate\Http\Request $request) {

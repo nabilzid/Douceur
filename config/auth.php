@@ -20,6 +20,20 @@ return [
         'passwords' => env('AUTH_PASSWORD_BROKER', 'users'),
     ],
 
+        /*
+    |--------------------------------------------------------------------------
+    | Email Verification
+    |--------------------------------------------------------------------------
+    |
+    | Ici, on définit la durée de validité du lien de vérification email.
+    | Par défaut : 60 minutes.
+    |
+    */
+
+    'verification' => [
+        'expire' => 60,
+    ],
+    
     /*
     |--------------------------------------------------------------------------
     | Authentication Guards

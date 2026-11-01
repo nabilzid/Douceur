@@ -6,6 +6,11 @@ import App from './App.vue';
 import router from './router';
 import axios from 'axios';
 import { useSettingsStore } from './stores/settings';
+import { configureEcho } from '@laravel/echo-vue';
+
+configureEcho({
+    broadcaster: 'reverb',
+});
 
 // Configuration Axios pour Sanctum SPA
 axios.defaults.withCredentials = true;
