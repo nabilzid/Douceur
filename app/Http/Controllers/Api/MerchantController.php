@@ -43,23 +43,6 @@ class MerchantController extends Controller
             'custom_orders_pending' => (clone $customOrders)->where('status', 'pending_quote')->count(),
             'custom_orders_quoted' => (clone $customOrders)->where('status', 'quoted')->count(),
             'custom_orders_accepted' => (clone $customOrders)->where('status', 'accepted')->count(),
-
-            // ✅ CA sur-mesure encaissé
-            'custom_revenue' => (clone $customOrders)
-                ->whereIn('status', ['accepted', 'completed'])
-                ->sum('amount_paid'),
-
-            // ✅ Soldes à recouvrer
-            'pending_payments' => (clone $customOrders)
-                ->where('status', 'accepted')
-                ->whereRaw('quoted_price > amount_paid')
-                ->selectRaw('SUM(quoted_price - amount_paid) as total')
-                ->value('total') ?? 0,
-
-            'pending_payments_count' => (clone $customOrders)
-                ->where('status', 'accepted')
-                ->whereRaw('quoted_price > amount_paid')
-                ->count(),
         ];
 
         // CA réservé à l'admin

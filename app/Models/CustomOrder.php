@@ -15,10 +15,10 @@ class CustomOrder extends Model
         'reference', 'user_id', 'merchant_id', 'customer_name', 'customer_email',
         'customer_phone', 'event_date', 'event_type', 'guests_count', 'description',
         'budget', 'quoted_price', 'merchant_response', 'quote_pdf_path', 'amount_paid', 'deposit_invoice_path', 'balance_invoice_path',
-'balance_payment_method',   // ← AJOUT
-'balance_paid_at',          // ← AJOUT
-'completed_at',             // ← AJOUT 
-'status',
+        'balance_payment_method',   // ← AJOUT
+        'balance_paid_at',          // ← AJOUT
+        'completed_at',             // ← AJOUT 
+        'status',
         // ✅ Champs livraison
         'delivery_type', 'delivery_address', 'delivery_postal_code', 'delivery_city', 'delivery_notes',
         // ✅ Pourcentage de paiement (20 / 50 / 100)

@@ -315,7 +315,7 @@
           </div>
 
           <!-- Contenu panneau -->
-          <div class="flex-1 space-y-6 overflow-y-auto px-5 py-6 sm:px-7">
+          <div ref="panelScrollRef" class="flex-1 space-y-6 overflow-y-auto px-5 py-6 sm:px-7">
             <div v-if="actionMessage" class="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800" role="status">
               {{ actionMessage }}
             </div>
@@ -390,8 +390,8 @@
               </div>
             </section>
 
-            <!-- Préparation devis (pending_quote) -->
-            <section v-if="activeOrder.status === 'pending_quote'" class="rounded-2xl border border-caramel/40 bg-white p-5">
+            <!-- Préparation devis (pending_quote) — ADMIN uniquement -->
+            <section v-if="activeOrder.status === 'pending_quote' && isAdmin" class="rounded-2xl border border-caramel/40 bg-white p-5">
               <div class="mb-4">
                 <h3 class="font-semibold text-chocolate">Préparer le devis</h3>
                 <p class="mt-1 text-sm text-muted">Indique le prix proposé et ajoute un message pour le client.</p>
@@ -439,7 +439,18 @@
                 </button>
               </div>
             </section>
-
+            <!-- ✅ NOUVEAU : Message pour le merchant -->
+            <section v-else-if="activeOrder.status === 'pending_quote' && !isAdmin" class="rounded-2xl border border-amber-200 bg-amber-50 p-5">
+              <div class="flex items-start gap-3">
+                <span class="text-2xl">ℹ️</span>
+                <div>
+                  <h3 class="font-semibold text-amber-900">Devis en attente</h3>
+                  <p class="mt-1 text-sm text-amber-800">
+                    Cette demande est en attente de devis. Seul un administrateur peut préparer et envoyer le devis.
+                  </p>
+                </div>
+              </div>
+            </section>
             <!-- Devis envoyé (lecture seule) -->
             <section v-else-if="activeOrder.quoted_price != null" class="rounded-2xl border border-cream-dark bg-white p-4">
               <h3 class="mb-2 font-semibold text-chocolate">Devis envoyé</h3>
@@ -495,10 +506,12 @@
               </div>
             </section>
 
-            <!-- Actions -->
-            <section>
+            <!-- Actions — ADMIN uniquement -->
+            <section v-if="isAdmin">
               <h3 class="mb-3 font-semibold text-chocolate">Actions</h3>
-              <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+
+              <!-- Actions disponibles -->
+              <div v-if="hasAnyAction" class="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <button
                   v-if="canRefuse"
                   type="button"
@@ -528,6 +541,22 @@
                   Commande terminée
                 </button>
               </div>
+
+              <!-- ✅ Message esthétique quand aucune action -->
+              <div
+                v-else
+                class="rounded-2xl border border-cream-dark bg-cream/50 p-5 text-center"
+              >
+                <div class="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-white text-2xl">
+                  {{ emptyActionIcon }}
+                </div>
+                <p class="text-sm font-medium text-chocolate">
+                  Aucune action disponible
+                </p>
+                <p class="mt-1 text-xs text-muted">
+                  {{ emptyActionMessage }}
+                </p>
+              </div>
             </section>
           </div>
         </aside>
@@ -541,21 +570,44 @@
           @click.self="refuseModalOpen = false"
         >
           <div class="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl" role="alertdialog" aria-modal="true">
-            <h3 class="font-display text-xl font-bold text-chocolate">Refuser cette demande ?</h3>
-            <p class="mt-2 text-sm leading-6 text-muted">Cette action va enregistrer le refus de la demande.</p>
+            <h3 class="font-display text-xl font-bold text-chocolate">
+              Refuser cette demande ?
+            </h3>
+            <p class="mt-2 text-sm leading-6 text-muted">
+              Cette action va notifier le client et enregistrer le refus. Indiquez une raison.
+            </p>
+
+            <label class="mt-4 block">
+              <span class="mb-1.5 block text-sm font-medium text-chocolate">
+                Raison du refus <span class="text-raspberry">*</span>
+              </span>
+              <textarea
+                v-model="refuseReason"
+                rows="3"
+                required
+                maxlength="500"
+                placeholder="Ex. : indisponibilité sur la date demandée, produit non disponible…"
+                class="w-full resize-y rounded-xl border border-cream-dark bg-cream px-3 py-3 text-sm text-chocolate outline-none placeholder:text-muted/70 focus:border-caramel focus:bg-white focus:ring-2 focus:ring-caramel/20 disabled:opacity-60"
+                :disabled="savingAction"
+              />
+              <p class="mt-1 text-right text-xs text-muted">
+                {{ refuseReason.length }} / 500
+              </p>
+            </label>
+
             <div class="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
               <button
                 type="button"
                 class="rounded-xl border border-cream-dark px-4 py-2.5 text-sm font-semibold text-chocolate hover:bg-cream"
                 :disabled="savingAction"
-                @click="refuseModalOpen = false"
+                @click="refuseModalOpen = false; refuseReason = ''"
               >
                 Annuler
               </button>
               <button
                 type="button"
                 class="rounded-xl bg-red-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-60"
-                :disabled="savingAction"
+                :disabled="savingAction || !refuseReason.trim()"
                 @click="confirmRefuse"
               >
                 {{ savingAction ? 'En cours...' : 'Confirmer le refus' }}
@@ -644,7 +696,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 
 const auth = useAuthStore()
@@ -668,6 +720,8 @@ const savingAction = ref(false)
 const actionMessage = ref('')
 const actionError = ref('')
 const refuseModalOpen = ref(false)
+const refuseReason = ref('')
+const panelScrollRef = ref(null)
 
 const completeModalOpen = ref(false)
 const completeForm = reactive({ payment_method: null })
@@ -729,7 +783,7 @@ const quoteForActiveOrder = computed(() => {
 
 const canRefuse = computed(() => {
   if (!activeOrder.value) return false
-  return ['pending_quote', 'quoted'].includes(activeOrder.value.status)
+  return activeOrder.value.status === 'pending_quote'
 })
 
 const isQuoteValid = computed(() => {
@@ -909,12 +963,14 @@ function openPanel(order) {
   actionMessage.value = ''
   actionError.value = ''
   refuseModalOpen.value = false
+  refuseReason.value = ''
   completeModalOpen.value = false
 }
 
 function closePanel() {
   panelOpen.value = false
   refuseModalOpen.value = false
+  refuseReason.value = ''
   completeModalOpen.value = false
 }
 
@@ -1169,6 +1225,10 @@ async function sendQuote() {
 
 async function confirmRefuse() {
   if (!activeOrder.value) return
+  if (!refuseReason.value.trim()) {
+    actionError.value = 'Veuillez indiquer une raison.'
+    return
+  }
 
   const orderId = activeOrder.value.id
   savingAction.value = true
@@ -1178,19 +1238,35 @@ async function confirmRefuse() {
   try {
     const response = await fetch(`/api/admin/custom-orders/${orderId}/refuse`, {
       method: 'PUT',
-      headers: { Accept: 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+      },
       credentials: 'include',
+      body: JSON.stringify({
+        reason: refuseReason.value.trim(),
+      }),
     })
 
     const data = await response.json().catch(() => ({}))
 
     if (!response.ok) {
-      throw new Error(data.message || 'Impossible de refuser cette demande.')
+      const msg = data.errors
+        ? Object.values(data.errors).flat().join(' ')
+        : data.message
+      throw new Error(msg || 'Impossible de refuser cette demande.')
     }
 
     refuseModalOpen.value = false
+    refuseReason.value = ''
     actionMessage.value = 'La demande a été refusée.'
+
     await loadOrders({ silent: true })
+
+    await nextTick()
+    if (panelScrollRef.value) {
+      panelScrollRef.value.scrollTo({ top: 0, behavior: 'smooth' })
+    }
   } catch (error) {
     actionError.value = error.message || 'Une erreur est survenue.'
   } finally {
@@ -1275,6 +1351,40 @@ function handleKeydown(event) {
   }
 }
 
+const hasAnyAction = computed(() => {
+  if (!activeOrder.value) return false
+  const status = activeOrder.value.status
+  return canRefuse.value || status === 'accepted'
+})
+
+const emptyActionIcon = computed(() => {
+  if (!activeOrder.value) return '📋'
+  const status = activeOrder.value.status
+  const icons = {
+    quoted: '✉️',
+    rejected: '❌',
+    refused_by_merchant: '🚫',
+    cancelled: '⛔',
+    completed: '✅',
+  }
+  return icons[status] || '📋'
+})
+
+const emptyActionMessage = computed(() => {
+  if (!activeOrder.value) return ''
+  const status = activeOrder.value.status
+
+  const messages = {
+    quoted: 'Le devis a été envoyé au client. En attente de sa réponse.',
+    rejected: 'Le client a refusé ce devis. Aucune action possible.',
+    refused_by_merchant: 'Cette demande a été refusée. Aucune action possible.',
+    cancelled: 'Cette demande a été annulée. Aucune action possible.',
+    completed: 'Cette commande est terminée. Plus aucune action n’est possible.',
+  }
+
+  return messages[status] || 'Cette demande est dans un état où aucune action n’est requise.'
+})
+
 watch(panelOpen, isOpen => {
   if (typeof document !== 'undefined') {
     document.body.style.overflow = isOpen ? 'hidden' : ''
@@ -1300,6 +1410,7 @@ onUnmounted(() => {
     document.body.style.overflow = ''
   }
 })
+
 </script>
 
 <style scoped>

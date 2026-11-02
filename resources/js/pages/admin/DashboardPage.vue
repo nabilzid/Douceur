@@ -315,7 +315,7 @@
       <!-- ═══════════════════════════════════════════════════════
            SECTION 3 — TRÉSORERIE
            ═══════════════════════════════════════════════════════ -->
-      <section>
+      <section v-if="isAdmin">
         <div class="mb-4 flex items-end justify-between gap-3">
           <div>
             <h2 class="font-display text-xl font-bold text-chocolate">Trésorerie</h2>
@@ -503,20 +503,15 @@ async function load() {
         pending_payments_count: data.pending_payments_count ?? 0,
       }
     } else {
-      const { data } = await axios.get('/api/merchant/dashboard')
-      merchantStats.value = data
-      stats.value = {
-        custom_pending: data.custom_orders_pending ?? 0,
-        custom_quoted: data.custom_orders_quoted ?? 0,
-        custom_accepted: data.custom_orders_accepted ?? 0,
-        custom_revenue: data.custom_revenue ?? 0,
-        orders_revenue: data.revenue_today ?? 0,
-        orders_count: data.orders_today ?? 0,
-        total_revenue: (data.revenue_today ?? 0) + (data.custom_revenue ?? 0),
-        pending_payments: data.pending_payments ?? 0,
-        pending_payments_count: data.pending_payments_count ?? 0,
-      }
+    const { data } = await axios.get('/api/merchant/dashboard')
+    merchantStats.value = data
+    stats.value = {
+      custom_pending: data.custom_orders_pending ?? 0,
+      custom_quoted: data.custom_orders_quoted ?? 0,
+      custom_accepted: data.custom_orders_accepted ?? 0,
+      // Pas de trésorerie pour le merchant
     }
+  }
   } catch {
     // Garder les données existantes
   } finally {
